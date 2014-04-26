@@ -230,115 +230,116 @@ GLint Program::GetUniformLocation(const GLchar* name) const
     return loc;
 }
 
-void Program::UploadInt(const GLchar* name, GLuint value) const
-{
-    UploadInt(GetUniformLocation(name), value);
-}
-
-void Program::UploadInt(GLint location, GLuint value) const
-{
-    ScopedProgramBind binder(*this);
-    glUniform1i(location, value);
-    CheckGLErrors();
-}
-
-void Program::UploadFloat(const GLchar* name, GLfloat value) const
-{
-    UploadFloat(GetUniformLocation(name), value);
-}
-
-void Program::UploadFloat(GLint location, GLfloat value) const
-{
-    ScopedProgramBind binder(*this);
-    glUniform1f(location, value);
-    CheckGLErrors();
-}
-
-void Program::UploadVec2(const GLchar* name, GLfloat v0, GLfloat v1) const
-{
-    UploadVec2(GetUniformLocation(name), v0, v1);
-}
-
-void Program::UploadVec2(GLint location, GLfloat v0, GLfloat v1) const
-{
-    ScopedProgramBind binder(*this);
-    glUniform2f(location, v0, v1);
-    CheckGLErrors();
-}
-
-void Program::UploadVec2(const GLchar* name, const GLfloat* values) const
-{
-    UploadVec2(GetUniformLocation(name), values);
-}
-
-void Program::UploadVec2(GLint location, const GLfloat* values) const
-{
-    ScopedProgramBind binder(*this);
-    glUniform2fv(location, 1, values);
-    CheckGLErrors();
-}
-
-void Program::UploadVec4(const GLchar* name, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3) const
-{
-    UploadVec4(GetUniformLocation(name), v0, v1, v2, v3);
-}
-
-void Program::UploadVec4(GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3) const
-{
-    ScopedProgramBind binder(*this);
-    glUniform4f(location, v0, v1, v2, v3);
-    CheckGLErrors();
-}
-
-void Program::UploadVec4(const GLchar* name, const GLfloat* values) const
-{
-    UploadVec4(GetUniformLocation(name), values);
-}
-
-void Program::UploadVec4(GLint location, const GLfloat* values) const
-{
-    ScopedProgramBind binder(*this);
-    glUniform4fv(location, 1, values);
-    CheckGLErrors();
-}
-
-void Program::UploadMatrix4(const GLchar* name, GLboolean transpose, const GLfloat* values) const
-{
-    UploadMatrix4(GetUniformLocation(name), transpose, values);
-}
-
-void Program::UploadMatrix4(GLint location, GLboolean transpose, const GLfloat* values) const
-{
-    ScopedProgramBind binder(*this);
-    glUniformMatrix4fv(location, 1, transpose, values);
-    CheckGLErrors();
-}
-
 GLuint Program::GetGLHandle() const
 {
     return mHandle.mHandle;
 }
 
-ScopedProgramBind::ScopedProgramBind(const Program& bound)
+ProgramBinding::ProgramBinding(Program& program)
+    : mProgram(program)
+{
+    glUseProgram(mProgram.GetGLHandle());
+    CheckGLErrors();
+}
+
+void ProgramBinding::UploadInt(const GLchar* name, GLuint value) const
+{
+    UploadInt(mProgram.GetUniformLocation(name), value);
+}
+
+void ProgramBinding::UploadInt(GLint location, GLuint value) const
+{
+    glUniform1i(location, value);
+    CheckGLErrors();
+}
+
+void ProgramBinding::UploadFloat(const GLchar* name, GLfloat value) const
+{
+    UploadFloat(mProgram.GetUniformLocation(name), value);
+}
+
+void ProgramBinding::UploadFloat(GLint location, GLfloat value) const
+{
+    glUniform1f(location, value);
+    CheckGLErrors();
+}
+
+void ProgramBinding::UploadVec2(const GLchar* name, GLfloat v0, GLfloat v1) const
+{
+    UploadVec2(mProgram.GetUniformLocation(name), v0, v1);
+}
+
+void ProgramBinding::UploadVec2(GLint location, GLfloat v0, GLfloat v1) const
+{
+    glUniform2f(location, v0, v1);
+    CheckGLErrors();
+}
+
+void ProgramBinding::UploadVec2(const GLchar* name, const GLfloat* values) const
+{
+    UploadVec2(mProgram.GetUniformLocation(name), values);
+}
+
+void ProgramBinding::UploadVec2(GLint location, const GLfloat* values) const
+{
+    glUniform2fv(location, 1, values);
+    CheckGLErrors();
+}
+
+void ProgramBinding::UploadVec4(const GLchar* name, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3) const
+{
+    UploadVec4(mProgram.GetUniformLocation(name), v0, v1, v2, v3);
+}
+
+void ProgramBinding::UploadVec4(GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3) const
+{
+    glUniform4f(location, v0, v1, v2, v3);
+    CheckGLErrors();
+}
+
+void ProgramBinding::UploadVec4(const GLchar* name, const GLfloat* values) const
+{
+    UploadVec4(mProgram.GetUniformLocation(name), values);
+}
+
+void ProgramBinding::UploadVec4(GLint location, const GLfloat* values) const
+{
+    glUniform4fv(location, 1, values);
+    CheckGLErrors();
+}
+
+void ProgramBinding::UploadMatrix4(const GLchar* name, GLboolean transpose, const GLfloat* values) const
+{
+    UploadMatrix4(mProgram.GetUniformLocation(name), transpose, values);
+}
+
+void ProgramBinding::UploadMatrix4(GLint location, GLboolean transpose, const GLfloat* values) const
+{
+    glUniformMatrix4fv(location, 1, transpose, values);
+    CheckGLErrors();
+}
+
+ScopedProgramBinding::OldHandle::OldHandle()
 {
     GLint currentProgram;
     glGetIntegerv(GL_CURRENT_PROGRAM, &currentProgram);
     CheckGLErrors();
 
     mOldProgram.mHandle = currentProgram;
-
-    glUseProgram(bound.GetGLHandle());
-    CheckGLErrors();
 }
 
-ScopedProgramBind::~ScopedProgramBind()
+ScopedProgramBinding::ScopedProgramBinding(Program& program)
+    : mOldHandle()
+    , mBinding(program)
+{ }
+
+ScopedProgramBinding::~ScopedProgramBinding()
 {
-    glUseProgram(mOldProgram.mHandle);
+    glUseProgram(mOldHandle.mOldProgram.mHandle);
     CheckGLErrors();
 }
 
-Buffer::Buffer(GLenum target)
-    : mTarget(target)
+Buffer::Buffer()
 {
     glGenBuffers(1, &mHandle.mHandle);
     CheckGLErrors();
@@ -350,42 +351,52 @@ Buffer::~Buffer()
     CheckGLErrors();
 }
 
-void Buffer::Upload(GLsizeiptr size, const GLvoid* data, GLenum usage)
-{
-    ScopedBufferBind binder(*this);
-
-    glBufferData(mTarget, size, data, usage);
-    CheckGLErrors();
-}
-
-GLenum Buffer::GetTarget() const
-{
-    return mTarget;
-}
-
 GLuint Buffer::GetGLHandle() const
 {
     return mHandle.mHandle;
 }
 
-ScopedBufferBind::ScopedBufferBind(const Buffer& bound)
-    : mTarget(bound.GetTarget())
+BufferBinding::BufferBinding(Buffer& buffer, GLenum target)
+    : mBuffer(buffer)
+    , mTarget(target)
 {
-    if (bound.GetTarget() == GL_ARRAY_BUFFER)
-    {
-        GLint oldBuffer;
-        glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &oldBuffer);
-        CheckGLErrors();
-
-        mOldBuffer.mHandle = oldBuffer;
-    }
-    glBindBuffer(bound.GetTarget(), bound.GetGLHandle());
+    glBindBuffer(mTarget, mBuffer.GetGLHandle());
     CheckGLErrors();
 }
 
-ScopedBufferBind::~ScopedBufferBind()
+void BufferBinding::Upload(GLsizeiptr size, const GLvoid* data, GLenum usage)
 {
-    glBindBuffer(mTarget, mOldBuffer.mHandle);
+    glBufferData(mTarget, size, data, usage);
+    CheckGLErrors();
+}
+
+void BufferBinding::Patch(GLintptr offset, GLsizeiptr size, const GLvoid* data)
+{
+    glBufferSubData(mTarget, offset, size, data);
+    CheckGLErrors();
+}
+
+ScopedBufferBinding::OldHandle::OldHandle(GLuint target)
+{
+    GLenum binding = target == GL_ARRAY_BUFFER ? GL_ARRAY_BUFFER_BINDING
+                   : target == GL_ELEMENT_ARRAY_BUFFER ? GL_ELEMENT_ARRAY_BUFFER_BINDING
+                   : throw std::logic_error("Invalid Buffer target type");
+
+    GLint oldBuffer;
+    glGetIntegerv(binding, &oldBuffer);
+    CheckGLErrors();
+
+    mOldBuffer.mHandle = oldBuffer;
+}
+
+ScopedBufferBinding::ScopedBufferBinding(Buffer& buffer, GLenum target)
+    : mOldHandle(target)
+    , mBinding(buffer, target)
+{ }
+
+ScopedBufferBinding::~ScopedBufferBinding()
+{
+    glBindBuffer(GetBinding().GetTarget(), mOldHandle.mOldBuffer.mHandle);
     CheckGLErrors();
 }
 
@@ -399,52 +410,6 @@ VertexArray::~VertexArray()
 {
     glDeleteVertexArrays(1, &mHandle.mHandle);
     CheckGLErrors();
-}
-
-void VertexArray::SetAttribute(
-        GLuint index,
-        const std::shared_ptr<Buffer>& buffer,
-        GLint size,
-        GLenum type,
-        GLboolean normalized,
-        GLsizei stride,
-        GLsizei offset)
-{
-    if (buffer->GetTarget() != GL_ARRAY_BUFFER)
-    {
-        throw std::logic_error("Only GL_ARRAY_BUFFERs can be used as attributes.");
-    }
-
-    ScopedVertexArrayBind binder(*this);
-
-    glEnableVertexAttribArray(index);
-    CheckGLErrors();
-
-    {
-        ScopedBufferBind bufferBind(*buffer);
-
-        glVertexAttribPointer(index, size, type, normalized, stride, (char*)NULL + offset);
-        CheckGLErrors();
-
-        mVertexBuffers[index] = buffer;
-    }
-}
-
-void VertexArray::SetIndexBuffer(const std::shared_ptr<Buffer>& buffer, GLenum type)
-{
-    if (buffer->GetTarget() != GL_ELEMENT_ARRAY_BUFFER)
-    {
-        throw std::logic_error("Only GL_ELEMENT_ARRAY_BUFFERs can be used as index buffers.");
-    }
-
-    ScopedVertexArrayBind binder(*this);
-
-    // spookiest, most unobviously documented thing about the GL spec I found so far.
-    glBindBuffer(buffer->GetTarget(), buffer->GetGLHandle());
-    CheckGLErrors();
-
-    mIndexBuffer = buffer;
-    mIndexType = type;
 }
 
 GLenum VertexArray::GetIndexType() const
@@ -461,21 +426,61 @@ GLuint VertexArray::GetGLHandle() const
     return mHandle.mHandle;
 }
 
-ScopedVertexArrayBind::ScopedVertexArrayBind(const VertexArray& bound)
+VertexArrayBinding::VertexArrayBinding(VertexArray& vertexArray)
+    : mVertexArray(vertexArray)
+{
+    glBindVertexArray(mVertexArray.GetGLHandle());
+    CheckGLErrors();
+}
+
+void VertexArrayBinding::SetAttribute(
+        GLuint index,
+        const std::shared_ptr<Buffer>& buffer,
+        GLint size,
+        GLenum type,
+        GLboolean normalized,
+        GLsizei stride,
+        GLsizei offset)
+{
+    glEnableVertexAttribArray(index);
+    CheckGLErrors();
+
+    ScopedBufferBinding bufferBinding(*buffer, GL_ARRAY_BUFFER);
+
+    glVertexAttribPointer(index, size, type, normalized, stride, (char*)NULL + offset);
+    CheckGLErrors();
+
+    mVertexArray.mVertexBuffers[index] = buffer;
+}
+
+void VertexArrayBinding::SetIndexBuffer(const std::shared_ptr<Buffer>& buffer, GLenum type)
+{
+    // spookiest, most unobviously documented thing about the GL spec I found so far.
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer->GetGLHandle());
+    CheckGLErrors();
+
+    mVertexArray.mIndexBuffer = buffer;
+    mVertexArray.mIndexType = type;
+}
+
+
+ScopedVertexArrayBinding::OldHandle::OldHandle()
 {
     GLint oldArray;
     glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &oldArray);
     CheckGLErrors();
 
     mOldVertexArray.mHandle = oldArray;
-
-    glBindVertexArray(bound.GetGLHandle());
-    CheckGLErrors();
 }
 
-ScopedVertexArrayBind::~ScopedVertexArrayBind()
+ScopedVertexArrayBinding::ScopedVertexArrayBinding(VertexArray& vertexArray)
+    : mOldHandle()
+    , mBinding(vertexArray)
+{ }
+
+ScopedVertexArrayBinding::~ScopedVertexArrayBinding()
 {
-    glBindVertexArray(mOldVertexArray.mHandle);
+    glBindVertexArray(mOldHandle.mOldVertexArray.mHandle);
     CheckGLErrors();
 }
 
@@ -491,87 +496,102 @@ Texture2D::~Texture2D()
     CheckGLErrors();
 }
 
-void Texture2D::LoadImage(const char* filename, unsigned int flags)
-{
-    unsigned int soilFlags = 0;
-    if (flags & InvertY)
-    {
-        soilFlags |= SOIL_FLAG_INVERT_Y;
-    }
-
-    int width, height;
-    if (!SOIL_load_OGL_texture(filename,
-                &width, &height, NULL,
-                SOIL_LOAD_AUTO,
-                mHandle.mHandle,
-                soilFlags))
-    {
-        throw std::runtime_error(SOIL_last_result());
-    }
-
-    mWidth = width;
-    mHeight = height;
-}
-
-void Texture2D::CreateStorage(GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height)
-{
-    ScopedTextureBind binder(*this, GL_TEXTURE0);
-
-    glTexStorage2D(GL_TEXTURE_2D, levels, internalformat, width, height);
-    CheckGLErrors();
-
-    mWidth = width;
-    mHeight = height;
-}
-
-int Texture2D::GetWidth() const
-{
-    if (!mHandle.mHandle)
-    {
-        throw std::runtime_error("Texture not loaded.");
-    }
-    return mWidth;
-}
-
-int Texture2D::GetHeight() const
-{
-    if (!mHandle.mHandle)
-    {
-        throw std::runtime_error("Texture not loaded.");
-    }
-    return mHeight;
-}
-
 GLuint Texture2D::GetGLHandle() const
 {
     return mHandle.mHandle;
 }
 
-ScopedTextureBind::ScopedTextureBind(const Texture2D& bound, GLenum textureIndex)
+ActiveTextureBinding::ActiveTextureBinding(GLenum textureIndex)
     : mTextureIndex(textureIndex)
 {
-    glGetIntegerv(GL_ACTIVE_TEXTURE, &mOldTextureIndex);
+    glActiveTexture(textureIndex);
+    CheckGLErrors();
+}
+
+ScopedActiveTextureBinding::OldIndex::OldIndex()
+{
+    GLint oldIndex;
+    glGetIntegerv(GL_ACTIVE_TEXTURE, &oldIndex);
     CheckGLErrors();
 
-    glActiveTexture(mTextureIndex);
-    CheckGLErrors();
+    mOldIndex = oldIndex;
+}
 
+ScopedActiveTextureBinding::ScopedActiveTextureBinding(GLenum textureIndex)
+    : mOldIndex()
+    , mBinding(textureIndex)
+{ }
+
+ScopedActiveTextureBinding::~ScopedActiveTextureBinding()
+{
+    glActiveTexture(mOldIndex.mOldIndex);
+    CheckGLErrors();
+}
+
+Texture2DBinding::Texture2DBinding(Texture2D& texture2D)
+    : mTexture2D(texture2D)
+{
+    glBindTexture(GL_TEXTURE_2D, mTexture2D.GetGLHandle());
+    CheckGLErrors();
+}
+
+void Texture2DBinding::LoadImage(const char* filename, unsigned int flags)
+{
+    unsigned int soilFlags = 0;
+    if (flags & Texture2D::InvertY)
+    {
+        soilFlags |= SOIL_FLAG_INVERT_Y;
+    }
+
+    if (!SOIL_load_OGL_texture(filename,
+                NULL, NULL, NULL,
+                SOIL_LOAD_AUTO,
+                mTexture2D.GetGLHandle(),
+                soilFlags))
+    {
+        throw std::runtime_error(SOIL_last_result());
+    }
+}
+
+void Texture2DBinding::CreateStorage(GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height)
+{
+    glTexStorage2D(GL_TEXTURE_2D, levels, internalformat, width, height);
+    CheckGLErrors();
+}
+
+int Texture2DBinding::GetWidth() const
+{
+    int width;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0,  GL_TEXTURE_WIDTH, &width);
+    CheckGLErrors();
+    return width;
+}
+
+int Texture2DBinding::GetHeight() const
+{
+    int height;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0,  GL_TEXTURE_HEIGHT, &height);
+    CheckGLErrors();
+    return height;
+}
+
+ScopedTexture2DBinding::OldHandle::OldHandle()
+{
     GLint oldTexture;
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &oldTexture);
     CheckGLErrors();
 
     mOldTexture.mHandle = oldTexture;
-
-    glBindTexture(GL_TEXTURE_2D, bound.GetGLHandle());
-    CheckGLErrors();
 }
 
-ScopedTextureBind::~ScopedTextureBind()
-{
-    glBindTexture(GL_TEXTURE_2D, mOldTexture.mHandle);
-    CheckGLErrors();
+ScopedTexture2DBinding::ScopedTexture2DBinding(Texture2D& texture2D)
+    : mOldHandle()
+    , mBinding(texture2D)
+{ }
 
-    glActiveTexture(mOldTextureIndex);
+ScopedTexture2DBinding::~ScopedTexture2DBinding()
+{
+    glBindTexture(GL_TEXTURE_2D, mOldHandle.mOldTexture.mHandle);
     CheckGLErrors();
 }
 

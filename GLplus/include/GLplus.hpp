@@ -71,6 +71,16 @@ public:
     bool TryGetUniformLocation(const GLchar* name, GLint& loc) const;
     GLint GetUniformLocation(const GLchar* name) const;
 
+    GLuint GetGLHandle() const;
+};
+
+class ProgramBinding
+{
+    Program& mProgram;
+
+public:
+    ProgramBinding(Program& program);
+
     void UploadInt(const GLchar* name, GLuint value) const;
     void UploadInt(GLint location, GLuint value) const;
 
@@ -90,16 +100,26 @@ public:
     void UploadMatrix4(const GLchar* name, GLboolean transpose, const GLfloat* values) const;
     void UploadMatrix4(GLint location, GLboolean transpose, const GLfloat* values) const;
 
-    GLuint GetGLHandle() const;
+          Program& GetProgram()       { return mProgram; }
+    const Program& GetProgram() const { return mProgram; }
 };
 
-class ScopedProgramBind
+class ScopedProgramBinding
 {
-    detail::ObjectHandle mOldProgram;
+    struct OldHandle
+    {
+        OldHandle();
+        detail::ObjectHandle mOldProgram;
+    } mOldHandle;
+
+    ProgramBinding mBinding;
 
 public:
-    ScopedProgramBind(const Program& bound);
-    ~ScopedProgramBind();
+    ScopedProgramBinding(Program& program);
+    ~ScopedProgramBinding();
+
+          ProgramBinding& GetBinding()       { return mBinding; }
+    const ProgramBinding& GetBinding() const { return mBinding; }
 };
 
 class Buffer
@@ -108,28 +128,50 @@ class Buffer
     GLenum mTarget;
 
 public:
-    Buffer(GLenum target);
+    Buffer();
+    ~Buffer();
+
     Buffer(const Buffer&) = delete;
     Buffer& operator=(const Buffer&) = delete;
     Buffer(Buffer&&) = default;
     Buffer& operator=(Buffer&&) = default;
-    ~Buffer();
-
-    void Upload(GLsizeiptr size, const GLvoid* data, GLenum usage);
-
-    GLenum GetTarget() const;
 
     GLuint GetGLHandle() const;
 };
 
-class ScopedBufferBind
+class BufferBinding
 {
-    detail::ObjectHandle mOldBuffer;
+    Buffer& mBuffer;
     GLenum mTarget;
 
 public:
-    ScopedBufferBind(const Buffer& bound);
-    ~ScopedBufferBind();
+    BufferBinding(Buffer& buffer, GLenum target);
+
+    void Upload(GLsizeiptr size, const GLvoid* data, GLenum usage);
+    void Patch(GLintptr offset, GLsizeiptr size, const GLvoid* data);
+
+          Buffer& GetBuffer()       { return mBuffer; }
+    const Buffer& GetBuffer() const { return mBuffer; }
+
+    GLenum GetTarget() const { return mTarget; }
+};
+
+class ScopedBufferBinding
+{
+    struct OldHandle
+    {
+        OldHandle(GLuint target);
+        detail::ObjectHandle mOldBuffer;
+    } mOldHandle;
+
+    BufferBinding mBinding;
+
+public:
+    ScopedBufferBinding(Buffer& buffer, GLenum target);
+    ~ScopedBufferBinding();
+
+          BufferBinding& GetBinding()       { return mBinding; }
+    const BufferBinding& GetBinding() const { return mBinding; }
 };
 
 class VertexArray
@@ -140,12 +182,26 @@ class VertexArray
     GLenum mIndexType = 0;
 
 public:
+    friend class VertexArrayBinding;
+
     VertexArray();
+    ~VertexArray();
+
     VertexArray(const VertexArray&) = delete;
     VertexArray& operator=(const VertexArray&) = delete;
     VertexArray(VertexArray&&) = default;
     VertexArray& operator=(VertexArray&&) = default;
-    ~VertexArray();
+
+    GLenum GetIndexType() const;
+    GLuint GetGLHandle() const;
+};
+
+class VertexArrayBinding
+{
+    VertexArray& mVertexArray;
+
+public:
+    VertexArrayBinding(VertexArray& vertexArray);
 
     void SetAttribute(
             GLuint index,
@@ -160,27 +216,35 @@ public:
             const std::shared_ptr<Buffer>& buffer,
             GLenum type);
 
-    GLenum GetIndexType() const;
-
-    GLuint GetGLHandle() const;
+          VertexArray& GetVertexArray()       { return mVertexArray; }
+    const VertexArray& GetVertexArray() const { return mVertexArray; }
 };
 
-class ScopedVertexArrayBind
+class ScopedVertexArrayBinding
 {
-    detail::ObjectHandle mOldVertexArray;
+    struct OldHandle
+    {
+        OldHandle();
+        detail::ObjectHandle mOldVertexArray;
+    } mOldHandle;
+
+    VertexArrayBinding mBinding;
 
 public:
-    ScopedVertexArrayBind(const VertexArray& bound);
-    ~ScopedVertexArrayBind();
+    ScopedVertexArrayBinding(VertexArray& vertexArray);
+    ~ScopedVertexArrayBinding();
+
+          VertexArrayBinding& GetBinding()       { return mBinding; }
+    const VertexArrayBinding& GetBinding() const { return mBinding; }
 };
 
 class Texture2D
 {
     detail::ObjectHandle mHandle;
-    int mWidth;
-    int mHeight;
 
 public:
+    friend class Texture2DBinding;
+
     enum LoadFlags
     {
         NoFlags = 0,
@@ -188,11 +252,50 @@ public:
     };
 
     Texture2D();
+    ~Texture2D();
+
     Texture2D(const Texture2D&) = delete;
     Texture2D& operator=(const Texture2D&) = delete;
     Texture2D(Texture2D&&) = default;
     Texture2D& operator=(Texture2D&&) = default;
-    ~Texture2D();
+
+    GLuint GetGLHandle() const;
+};
+
+class ActiveTextureBinding
+{
+    GLenum mTextureIndex;
+
+public:
+    ActiveTextureBinding(GLenum textureIndex);
+
+    GLenum GetTextureIndex() const { return mTextureIndex; }
+};
+
+class ScopedActiveTextureBinding
+{
+    struct OldIndex
+    {
+        OldIndex();
+        GLenum mOldIndex;
+    } mOldIndex;
+
+    ActiveTextureBinding mBinding;
+
+public:
+    ScopedActiveTextureBinding(GLenum textureIndex);
+    ~ScopedActiveTextureBinding();
+
+          ActiveTextureBinding& GetBinding()       { return mBinding; }
+    const ActiveTextureBinding& GetBinding() const { return mBinding; }
+};
+
+class Texture2DBinding
+{
+    Texture2D& mTexture2D;
+
+public:
+    Texture2DBinding(Texture2D& texture2D);
 
     void LoadImage(const char* filename, unsigned int flags);
     void CreateStorage(GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height);
@@ -200,18 +303,26 @@ public:
     int GetWidth() const;
     int GetHeight() const;
 
-    GLuint GetGLHandle() const;
+          Texture2D& GetTexture2D()       { return mTexture2D; }
+    const Texture2D& GetTexture2D() const { return mTexture2D; }
 };
 
-class ScopedTextureBind
+class ScopedTexture2DBinding
 {
-    detail::ObjectHandle mOldTexture;
-    GLint mOldTextureIndex;
-    GLenum mTextureIndex;
+    struct OldHandle
+    {
+        OldHandle();
+        detail::ObjectHandle mOldTexture;
+    } mOldHandle;
+
+    Texture2DBinding mBinding;
 
 public:
-    ScopedTextureBind(const Texture2D& bound, GLenum textureIndex);
-    ~ScopedTextureBind();
+    ScopedTexture2DBinding(Texture2D& texture2D);
+    ~ScopedTexture2DBinding();
+
+          Texture2DBinding& GetBinding()       { return mBinding; }
+    const Texture2DBinding& GetBinding() const { return mBinding; }
 };
 
 class RenderBuffer
@@ -238,6 +349,9 @@ public:
     RenderBufferBinding(RenderBuffer& renderBuffer);
 
     void CreateStorage(GLenum internalformat, GLsizei width, GLsizei height);
+
+          RenderBuffer& GetRenderBuffer()       { return mRenderBuffer; }
+    const RenderBuffer& GetRenderBuffer() const { return mRenderBuffer; }
 };
 
 class ScopedRenderBufferBinding
