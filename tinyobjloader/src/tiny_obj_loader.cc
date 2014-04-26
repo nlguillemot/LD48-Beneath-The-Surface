@@ -460,7 +460,7 @@ std::string LoadMtl (
 }
 
 std::string
-MaybeLoadObj(
+TryLoadObj(
   std::vector<shape_t>& shapes,
   const char* filename,
   const char* mtl_basepath)

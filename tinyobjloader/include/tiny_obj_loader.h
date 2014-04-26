@@ -51,12 +51,12 @@ struct shape_t
 /// The function returns error string.
 /// Returns empty string when loading .obj success.
 /// 'mtl_basepath' is optional, and used for base path for .mtl file.
-std::string MaybeLoadObj(
+std::string TryLoadObj(
     std::vector<shape_t>& shapes,   // [output]
     const char* filename,
     const char* mtl_basepath = NULL);
 
-/// same as MaybeLoadObj, but throws on error instead of returning a message.
+/// same as TryLoadObj, but throws on error instead of returning a message.
 void LoadObj(
     std::vector<shape_t>& shapes,   // [output]
     const char* filename,
