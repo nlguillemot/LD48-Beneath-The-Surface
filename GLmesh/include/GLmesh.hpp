@@ -25,7 +25,7 @@ class StaticMesh
 public:
     void LoadShape(const tinyobj::shape_t& shape);
 
-    void Render(const GLplus::Program& program) const;
+    void Render(GLplus::Program& program) const;
 };
 
 } // end namespace GLmesh

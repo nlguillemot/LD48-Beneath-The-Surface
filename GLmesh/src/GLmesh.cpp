@@ -18,31 +18,37 @@ void StaticMesh::LoadShape(const tinyobj::shape_t& shape)
     std::shared_ptr<GLplus::Buffer> newTexcoords;
     std::shared_ptr<GLplus::Texture2D> newDiffuseTexture;
 
-    newIndices.reset(new GLplus::Buffer(GL_ELEMENT_ARRAY_BUFFER));
-    newIndices->Upload(
-              shape.mesh.indices.size() * sizeof(shape.mesh.indices[0]),
-              shape.mesh.indices.data(), GL_STATIC_DRAW);
+    newIndices.reset(new GLplus::Buffer());
+    {
+        GLplus::ScopedBufferBinding bufferBinding(*newIndices, GL_ELEMENT_ARRAY_BUFFER);
+        bufferBinding.GetBinding().Upload(
+                  shape.mesh.indices.size() * sizeof(shape.mesh.indices[0]),
+                  shape.mesh.indices.data(), GL_STATIC_DRAW);
+    }
 
     if (!shape.mesh.positions.empty())
     {
-        newPositions.reset(new GLplus::Buffer(GL_ARRAY_BUFFER));
-        newPositions->Upload(
+        newPositions.reset(new GLplus::Buffer());
+        GLplus::ScopedBufferBinding bufferBinding(*newPositions, GL_ARRAY_BUFFER);
+        bufferBinding.GetBinding().Upload(
                     shape.mesh.positions.size() * sizeof(shape.mesh.positions[0]),
                     shape.mesh.positions.data(), GL_STATIC_DRAW);
     }
 
     if (!shape.mesh.normals.empty())
     {
-        newNormals.reset(new GLplus::Buffer(GL_ARRAY_BUFFER));
-        newNormals->Upload(
+        newNormals.reset(new GLplus::Buffer());
+        GLplus::ScopedBufferBinding bufferBinding(*newNormals, GL_ARRAY_BUFFER);
+        bufferBinding.GetBinding().Upload(
                     shape.mesh.normals.size() * sizeof(shape.mesh.normals[0]),
                     shape.mesh.normals.data(), GL_STATIC_DRAW);
     }
 
     if (!shape.mesh.texcoords.empty())
     {
-        newTexcoords.reset(new GLplus::Buffer(GL_ARRAY_BUFFER));
-        newTexcoords->Upload(
+        newTexcoords.reset(new GLplus::Buffer());
+        GLplus::ScopedBufferBinding bufferBinding(*newTexcoords, GL_ARRAY_BUFFER);
+        bufferBinding.GetBinding().Upload(
                     shape.mesh.texcoords.size() * sizeof(shape.mesh.texcoords[0]),
                     shape.mesh.texcoords.data(), GL_STATIC_DRAW);
     }
@@ -50,7 +56,8 @@ void StaticMesh::LoadShape(const tinyobj::shape_t& shape)
     if (!shape.material.diffuse_texname.empty())
     {
         newDiffuseTexture.reset(new GLplus::Texture2D());
-        newDiffuseTexture->LoadImage(shape.material.diffuse_texname.c_str(), GLplus::Texture2D::InvertY);
+        GLplus::ScopedTexture2DBinding textureBinding(*newDiffuseTexture);
+        textureBinding.GetBinding().LoadImage(shape.material.diffuse_texname.c_str(), GLplus::Texture2D::InvertY);
     }
 
     mVertexCount = shape.mesh.indices.size();
@@ -62,18 +69,20 @@ void StaticMesh::LoadShape(const tinyobj::shape_t& shape)
     mDiffuseTexture = std::move(newDiffuseTexture);
 }
 
-void StaticMesh::Render(const GLplus::Program& program) const
+void StaticMesh::Render(GLplus::Program& program) const
 {
     GLplus::VertexArray vertexArray;
+    GLplus::ScopedVertexArrayBinding scopedVAO(vertexArray);
+    GLplus::VertexArrayBinding& vaoBinding = scopedVAO.GetBinding();
 
-    vertexArray.SetIndexBuffer(mIndices, GL_UNSIGNED_INT);
+    vaoBinding.SetIndexBuffer(mIndices, GL_UNSIGNED_INT);
 
     if (mPositions)
     {
         GLint positionLoc;
         if (program.TryGetAttributeLocation("position", positionLoc))
         {
-            vertexArray.SetAttribute(
+            vaoBinding.SetAttribute(
                         positionLoc, mPositions,
                         3, GL_FLOAT, GL_FALSE, 0, 0);
         }
@@ -84,7 +93,7 @@ void StaticMesh::Render(const GLplus::Program& program) const
         GLint normalLoc;
         if (program.TryGetAttributeLocation("normal", normalLoc))
         {
-            vertexArray.SetAttribute(
+            vaoBinding.SetAttribute(
                         normalLoc, mNormals,
                         3, GL_FLOAT, GL_FALSE, 0, 0);
         }
@@ -95,21 +104,22 @@ void StaticMesh::Render(const GLplus::Program& program) const
         GLint texcoord0Loc;
         if (program.TryGetAttributeLocation("texcoord0", texcoord0Loc))
         {
-            vertexArray.SetAttribute(
+            vaoBinding.SetAttribute(
                         texcoord0Loc, mTexcoords,
                         2, GL_FLOAT, GL_FALSE, 0, 0);
         }
     }
 
-    std::unique_ptr<GLplus::ScopedTextureBind> diffuseBind;
+    GLplus::ScopedProgramBinding programBinding(program);
+    std::unique_ptr<GLplus::ScopedActiveTextureBinding> activeTextureBind;
+    std::unique_ptr<GLplus::ScopedTexture2DBinding> diffuseBind;
     if (mDiffuseTexture)
     {
-        diffuseBind.reset(new GLplus::ScopedTextureBind(*mDiffuseTexture, GL_TEXTURE0));
-        program.UploadInt("diffuseTexture", 0);
+        activeTextureBind.reset(new GLplus::ScopedActiveTextureBinding(GL_TEXTURE0));
+        diffuseBind.reset(new GLplus::ScopedTexture2DBinding(*mDiffuseTexture));
+        programBinding.GetBinding().UploadInt("diffuseTexture", 0);
     }
 
-    GLplus::ScopedProgramBind programBind(program);
-    GLplus::ScopedVertexArrayBind vertexArrayBind(vertexArray);
     GLplus::DrawElements(GL_TRIANGLES, GL_UNSIGNED_INT, 0, mVertexCount);
 }
 
