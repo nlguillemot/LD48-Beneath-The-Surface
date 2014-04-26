@@ -27,6 +27,24 @@ static const char* StringFromGLError(GLenum err)
     }
 }
 
+
+static const char* FrameBufferStatusToString(GLenum status)
+{
+    switch (status)
+    {
+    case GL_FRAMEBUFFER_COMPLETE: return "GL_FRAMEBUFFER_COMPLETE";
+    case GL_FRAMEBUFFER_UNDEFINED: return "GL_FRAMEBUFFER_UNDEFINED";
+    case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: return "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT";
+    case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: return "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT";
+    case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: return "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER";
+    case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: return "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER";
+    case GL_FRAMEBUFFER_UNSUPPORTED: return "GL_FRAMEBUFFER_UNSUPPORTED";
+    case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: return "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE";
+    case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS: return "GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS";
+    default: return "Unknown FrameBuffer status";
+    }
+}
+
 void CheckGLErrors()
 {
     GLenum firstError = glGetError();
@@ -569,51 +587,61 @@ RenderBuffer::~RenderBuffer()
     CheckGLErrors();
 }
 
-void RenderBuffer::CreateStorage(GLenum internalformat, GLsizei width, GLsizei height)
-{
-    ScopedRenderBufferBind binder(*this);
-
-    glRenderbufferStorage(GL_RENDERBUFFER, internalformat, width, height);
-    CheckGLErrors();
-}
-
 GLuint RenderBuffer::GetGLHandle() const
 {
     return mHandle.mHandle;
 }
 
-ScopedRenderBufferBind::ScopedRenderBufferBind(const RenderBuffer& bound)
+RenderBufferBinding::RenderBufferBinding(RenderBuffer& renderBuffer)
+    : mRenderBuffer(renderBuffer)
+{
+    glBindRenderbuffer(GL_RENDERBUFFER, mRenderBuffer.GetGLHandle());
+    CheckGLErrors();
+}
+
+void RenderBufferBinding::CreateStorage(GLenum internalformat, GLsizei width, GLsizei height)
+{
+    glRenderbufferStorage(GL_RENDERBUFFER, internalformat, width, height);
+    CheckGLErrors();
+}
+
+ScopedRenderBufferBinding::OldHandle::OldHandle()
 {
     GLint oldRenderbuffer;
     glGetIntegerv(GL_RENDERBUFFER_BINDING, &oldRenderbuffer);
     CheckGLErrors();
 
     mOldRenderBuffer.mHandle = oldRenderbuffer;
-
-    glBindRenderbuffer(GL_RENDERBUFFER, bound.GetGLHandle());
-    CheckGLErrors();
 }
 
-ScopedRenderBufferBind::~ScopedRenderBufferBind()
+ScopedRenderBufferBinding::ScopedRenderBufferBinding(RenderBuffer& renderBuffer)
+    : mOldHandle()
+    , mBinding(renderBuffer)
+{ }
+
+ScopedRenderBufferBinding::~ScopedRenderBufferBinding()
 {
-    glBindRenderbuffer(GL_RENDERBUFFER, mOldRenderBuffer.mHandle);
+    glBindRenderbuffer(GL_RENDERBUFFER, mOldHandle.mOldRenderBuffer.mHandle);
     CheckGLErrors();
 }
 
 FrameBuffer::Attachment::Attachment(const std::shared_ptr<Texture2D>& texture)
     : mTextureAttachment(texture)
-{
-}
+{ }
 
 FrameBuffer::Attachment::Attachment(const std::shared_ptr<RenderBuffer>& renderBuffer)
     : mRenderBufferAttachment(renderBuffer)
-{
-}
+{ }
 
 FrameBuffer::FrameBuffer()
 {
     glGenFramebuffers(1, &mHandle.mHandle);
     CheckGLErrors();
+}
+
+FrameBuffer::FrameBuffer(DefaultFrameBuffer)
+{
+    mHandle.mHandle = 0;
 }
 
 FrameBuffer::~FrameBuffer()
@@ -622,64 +650,52 @@ FrameBuffer::~FrameBuffer()
     CheckGLErrors();
 }
 
-void FrameBuffer::Attach(GLenum attachment, const std::shared_ptr<Texture2D>& texture)
+GLuint FrameBuffer::GetGLHandle() const
 {
-    ScopedFrameBufferBind binder(*this);
+    return mHandle.mHandle;
+}
 
-    glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, texture->GetGLHandle(), 0);
+FrameBufferBinding::FrameBufferBinding(FrameBuffer& frameBuffer, GLuint target)
+    : mFrameBuffer(frameBuffer)
+    , mTarget(target)
+{
+    glBindFramebuffer(mTarget, mFrameBuffer.GetGLHandle());
+    CheckGLErrors();
+}
+
+void FrameBufferBinding::Attach(GLenum attachment, const std::shared_ptr<Texture2D>& texture)
+{
+    glFramebufferTexture2D(mTarget, attachment, GL_TEXTURE_2D, texture->GetGLHandle(), 0);
     CheckGLErrors();
 
-    mAttachments.emplace(attachment, texture);
+    mFrameBuffer.mAttachments.emplace(attachment, texture);
 }
 
-void FrameBuffer::Attach(GLenum attachment, const std::shared_ptr<RenderBuffer>& renderBuffer)
+void FrameBufferBinding::Attach(GLenum attachment, const std::shared_ptr<RenderBuffer>& renderBuffer)
 {
-    ScopedFrameBufferBind binder(*this);
-
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, attachment, GL_RENDERBUFFER, renderBuffer->GetGLHandle());
+    glFramebufferRenderbuffer(mTarget, attachment, GL_RENDERBUFFER, renderBuffer->GetGLHandle());
     CheckGLErrors();
 
-    mAttachments.emplace(attachment, renderBuffer);
+    mFrameBuffer.mAttachments.emplace(attachment, renderBuffer);
 }
 
-void FrameBuffer::Detach(GLenum attachment)
+void FrameBufferBinding::Detach(GLenum attachment)
 {
-    ScopedFrameBufferBind binder(*this);
-
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, attachment, GL_RENDERBUFFER, 0);
+    glFramebufferRenderbuffer(mTarget, attachment, GL_RENDERBUFFER, 0);
     CheckGLErrors();
 
-    mAttachments.erase(attachment);
+    mFrameBuffer.mAttachments.erase(attachment);
 }
 
-static const char* FrameBufferStatusToString(GLenum status)
+GLenum FrameBufferBinding::GetStatus() const
 {
-    switch (status)
-    {
-    case GL_FRAMEBUFFER_COMPLETE: return "GL_FRAMEBUFFER_COMPLETE";
-    case GL_FRAMEBUFFER_UNDEFINED: return "GL_FRAMEBUFFER_UNDEFINED";
-    case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: return "GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT";
-    case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: return "GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT";
-    case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: return "GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER";
-    case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: return "GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER";
-    case GL_FRAMEBUFFER_UNSUPPORTED: return "GL_FRAMEBUFFER_UNSUPPORTED";
-    case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: return "GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE";
-    case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS: return "GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS";
-    default: return "Unknown FrameBuffer status";
-    }
-}
-
-GLenum FrameBuffer::GetStatus() const
-{
-    ScopedFrameBufferBind binder(*this);
-
-    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    GLenum status = glCheckFramebufferStatus(mTarget);
     CheckGLErrors();
 
     return status;
 }
 
-void FrameBuffer::ValidateStatus() const
+void FrameBufferBinding::ValidateStatus() const
 {
     GLenum status = GetStatus();
     if (status != GL_FRAMEBUFFER_COMPLETE)
@@ -688,39 +704,60 @@ void FrameBuffer::ValidateStatus() const
     }
 }
 
-GLuint FrameBuffer::GetGLHandle() const
+ScopedFrameBufferBinding::OldHandles::OldHandles(GLuint target)
 {
-    return mHandle.mHandle;
+    if (target == GL_FRAMEBUFFER)
+    {
+        GLint oldFrameBuffer;
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &oldFrameBuffer);
+        CheckGLErrors();
+
+        mOldDrawFrameBuffer.mHandle = oldFrameBuffer;
+    }
+    else if (target == GL_DRAW_FRAMEBUFFER)
+    {
+        GLint oldDrawFrameBuffer;
+        glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &oldDrawFrameBuffer);
+        CheckGLErrors();
+
+        mOldDrawFrameBuffer.mHandle = oldDrawFrameBuffer;
+    }
+    else if (target == GL_READ_FRAMEBUFFER)
+    {
+        GLint oldReadFrameBuffer;
+        glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &oldReadFrameBuffer);
+        CheckGLErrors();
+
+        mOldReadFrameBuffer.mHandle = oldReadFrameBuffer;
+    }
 }
 
-ScopedFrameBufferBind::ScopedFrameBufferBind(const FrameBuffer& bound)
+ScopedFrameBufferBinding::ScopedFrameBufferBinding(FrameBuffer& frameBuffer, GLuint target)
+    : mOldHandles(target)
+    , mBinding(frameBuffer, target)
+{ }
+
+ScopedFrameBufferBinding::~ScopedFrameBufferBinding()
 {
-    GLint oldFramebuffer;
-    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &oldFramebuffer);
-    CheckGLErrors();
-
-    mOldFrameBuffer.mHandle = oldFramebuffer;
-
-    glBindFramebuffer(GL_FRAMEBUFFER, bound.GetGLHandle());
-    CheckGLErrors();
-}
-
-ScopedFrameBufferBind::ScopedFrameBufferBind(DefaultFrameBuffer)
-{
-    GLint oldFramebuffer;
-    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &oldFramebuffer);
-    CheckGLErrors();
-
-    mOldFrameBuffer.mHandle = oldFramebuffer;
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    CheckGLErrors();
-}
-
-ScopedFrameBufferBind::~ScopedFrameBufferBind()
-{
-    glBindFramebuffer(GL_FRAMEBUFFER, mOldFrameBuffer.mHandle);
-    CheckGLErrors();
+    if (mBinding.GetTarget() == GL_FRAMEBUFFER)
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, mOldHandles.mOldDrawFrameBuffer.mHandle);
+        CheckGLErrors();
+    }
+    else if (mBinding.GetTarget() == GL_DRAW_FRAMEBUFFER)
+    {
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, mOldHandles.mOldDrawFrameBuffer.mHandle);
+        CheckGLErrors();
+    }
+    else if (mBinding.GetTarget() == GL_READ_FRAMEBUFFER)
+    {
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, mOldHandles.mOldReadFrameBuffer.mHandle);
+        CheckGLErrors();
+    }
+    else
+    {
+        throw std::logic_error("Invalid FrameBuffer target type");
+    }
 }
 
 void DrawArrays(GLenum mode, GLint first, GLsizei count)

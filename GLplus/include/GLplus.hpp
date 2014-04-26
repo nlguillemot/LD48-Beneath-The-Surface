@@ -220,25 +220,45 @@ class RenderBuffer
 
 public:
     RenderBuffer();
+    ~RenderBuffer();
+
     RenderBuffer(const RenderBuffer&) = delete;
     RenderBuffer& operator=(const RenderBuffer&) = delete;
     RenderBuffer(RenderBuffer&&) = default;
     RenderBuffer& operator=(RenderBuffer&&) = default;
-    ~RenderBuffer();
-
-    void CreateStorage(GLenum internalformat, GLsizei width, GLsizei height);
 
     GLuint GetGLHandle() const;
 };
 
-class ScopedRenderBufferBind
+class RenderBufferBinding
 {
-    detail::ObjectHandle mOldRenderBuffer;
+    RenderBuffer& mRenderBuffer;
 
 public:
-    ScopedRenderBufferBind(const RenderBuffer& bound);
-    ~ScopedRenderBufferBind();
+    RenderBufferBinding(RenderBuffer& renderBuffer);
+
+    void CreateStorage(GLenum internalformat, GLsizei width, GLsizei height);
 };
+
+class ScopedRenderBufferBinding
+{
+    struct OldHandle
+    {
+        OldHandle();
+        detail::ObjectHandle mOldRenderBuffer;
+    } mOldHandle;
+
+    RenderBufferBinding mBinding;
+
+public:
+    ScopedRenderBufferBinding(RenderBuffer& renderBuffer);
+    ~ScopedRenderBufferBinding();
+
+          RenderBufferBinding& GetBinding()       { return mBinding; }
+    const RenderBufferBinding& GetBinding() const { return mBinding; }
+};
+
+struct DefaultFrameBuffer { };
 
 class FrameBuffer
 {
@@ -255,35 +275,58 @@ class FrameBuffer
     std::unordered_map<GLenum, Attachment> mAttachments;
 
 public:
+    friend class FrameBufferBinding;
+
     FrameBuffer();
+    FrameBuffer(DefaultFrameBuffer);
+    ~FrameBuffer();
+
     FrameBuffer(const FrameBuffer&) = delete;
     FrameBuffer& operator=(const FrameBuffer&) = delete;
     FrameBuffer(FrameBuffer&&) = default;
     FrameBuffer& operator=(FrameBuffer&&) = default;
-    ~FrameBuffer();
+
+    GLuint GetGLHandle() const;
+};
+
+class FrameBufferBinding
+{
+    FrameBuffer& mFrameBuffer;
+    GLuint mTarget;
+
+public:
+    FrameBufferBinding(FrameBuffer& frameBuffer, GLuint target);
 
     void Attach(GLenum attachment, const std::shared_ptr<Texture2D>& texture);
     void Attach(GLenum attachment, const std::shared_ptr<RenderBuffer>& renderBuffer);
-
     void Detach(GLenum attachment);
 
     GLenum GetStatus() const;
     void ValidateStatus() const;
 
-    GLuint GetGLHandle() const;
+          FrameBuffer& GetFrameBuffer()       { return mFrameBuffer; }
+    const FrameBuffer& GetFrameBuffer() const { return mFrameBuffer; }
+
+    GLuint GetTarget() const { return mTarget; }
 };
 
-class DefaultFrameBuffer { };
-
-// TODO: Make it possible to choose between the DRAW/READ framebuffer
-class ScopedFrameBufferBind
+class ScopedFrameBufferBinding
 {
-    detail::ObjectHandle mOldFrameBuffer;
+    struct OldHandles
+    {
+        OldHandles(GLuint target);
+        detail::ObjectHandle mOldDrawFrameBuffer;
+        detail::ObjectHandle mOldReadFrameBuffer;
+    } mOldHandles;
+
+    FrameBufferBinding mBinding;
 
 public:
-    ScopedFrameBufferBind(const FrameBuffer& bound);
-    ScopedFrameBufferBind(DefaultFrameBuffer);
-    ~ScopedFrameBufferBind();
+    ScopedFrameBufferBinding(FrameBuffer& frameBuffer, GLuint target);
+    ~ScopedFrameBufferBinding();
+
+          FrameBufferBinding& GetBinding()       { return mBinding; }
+    const FrameBufferBinding& GetBinding() const { return mBinding; }
 };
 
 constexpr size_t SizeFromGLType(GLenum type)
