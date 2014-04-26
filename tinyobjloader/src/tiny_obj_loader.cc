@@ -667,7 +667,7 @@ LoadObj(
     const char* filename,
     const char* mtl_basepath)
 {
-  std::string result = MaybeLoadObj(shapes, filename, mtl_basepath);
+  std::string result = TryLoadObj(shapes, filename, mtl_basepath);
   if (!result.empty()) {
     throw std::runtime_error(result);
   }
