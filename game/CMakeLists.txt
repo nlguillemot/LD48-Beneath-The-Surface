@@ -12,7 +12,7 @@ endif()
 set(SOURCES
     main.cpp
     gamecontext.hpp gamecontext.cpp
-    scene.hpp scene.cpp
+    scene.hpp
     worldscene.hpp worldscene.cpp)
 
 include_directories(
