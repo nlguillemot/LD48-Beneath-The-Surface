@@ -39,7 +39,7 @@ void GameContext::MainLoop()
 
         while (timeLag >= mMillisecondsPerUpdate)
         {
-            Update();
+            Update(mMillisecondsPerUpdate);
             timeLag -= mMillisecondsPerUpdate;
         }
 
@@ -50,7 +50,7 @@ void GameContext::MainLoop()
     MainLoopEnd:;
 }
 
-void GameContext::Update()
+void GameContext::Update(Uint32 deltaTimeMS)
 {
 
 }

@@ -16,7 +16,7 @@ public:
     void MainLoop();
 
 private:
-    void Update();
+    void Update(Uint32 deltaTimeMS);
 
     void Render(float partialUpdatePercentage);
 };

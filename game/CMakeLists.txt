@@ -10,9 +10,10 @@ if(UNIX)
 endif()
 
 set(SOURCES
-    gamecontext.hpp
-    gamecontext.cpp
-    main.cpp)
+    main.cpp
+    gamecontext.hpp gamecontext.cpp
+    scene.hpp scene.cpp
+    worldscene.hpp worldscene.cpp)
 
 include_directories(
     ${SDL2plus_INCLUDE_DIRS}
@@ -28,8 +29,12 @@ target_link_libraries(game
 # temporary. can be removed when glm 0.9.6 comes out.
 add_definitions(-DGLM_FORCE_RADIANS)
 
-set(ASSETS "")
+set(ASSETS
+    floor.obj floor.mtl)
 
 foreach(assetFile ${ASSETS})
-    configure_file(${assetFile} ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
+    add_custom_command(TARGET game POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${PROJECT_SOURCE_DIR}/${assetFile}"
+        $<TARGET_FILE_DIR:game>)
 endforeach()
