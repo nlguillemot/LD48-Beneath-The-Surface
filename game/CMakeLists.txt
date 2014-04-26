@@ -10,18 +10,20 @@ if(UNIX)
 endif()
 
 set(SOURCES
+    gamecontext.hpp
+    gamecontext.cpp
     main.cpp)
 
 include_directories(
-	${SDL2plus_INCLUDE_DIRS}
-	${GLmesh_INCLUDE_DIRS}
-	${glm_INCLUDE_DIR})
+    ${SDL2plus_INCLUDE_DIRS}
+    ${GLmesh_INCLUDE_DIRS}
+    ${glm_INCLUDE_DIR})
 
 add_executable(game ${SOURCES})
 
 target_link_libraries(game
-	${SDL2plus_LIBRARIES}
-	${GLmesh_LIBRARIES})
+    ${SDL2plus_LIBRARIES}
+    ${GLmesh_LIBRARIES})
 
 # temporary. can be removed when glm 0.9.6 comes out.
 add_definitions(-DGLM_FORCE_RADIANS)
@@ -29,5 +31,5 @@ add_definitions(-DGLM_FORCE_RADIANS)
 set(ASSETS "")
 
 foreach(assetFile ${ASSETS})
-	configure_file(${assetFile} ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
+    configure_file(${assetFile} ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
 endforeach()

@@ -1,39 +1,11 @@
-#include <SDL2plus.hpp>
-
-void run()
-{
-    SDL2plus::LibSDL sdl(SDL_INIT_VIDEO);
-    sdl.SetGLAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    sdl.SetGLAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-    sdl.SetGLAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-
-    SDL2plus::WindowGL window("Beneath the Surface",
-                              SDL_WINDOWPOS_UNDEFINED,
-                              SDL_WINDOWPOS_UNDEFINED,
-                              640, 480, SDL_WINDOW_OPENGL);
-
-    while (true)
-    {
-        SDL_Event event;
-        while (SDL_PollEvent(&event))
-        {
-            if (event.type == SDL_QUIT)
-            {
-                goto MainLoopEnd;
-            }
-        }
-
-        window.SwapBuffers();
-    }
-
-    MainLoopEnd:;
-}
+#include "gamecontext.hpp"
 
 int main(int argc, char* argv[])
 {
     try
     {
-        run();
+        GameContext game(argc, argv);
+        game.MainLoop();
     }
     catch (const std::exception& e)
     {
