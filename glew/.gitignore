@@ -1,0 +1,8 @@
+*.pc
+/build/vc6/*.rc
+/build/*.rc
+/auto/extensions
+/auto/registry
+/bin
+/lib
+/tmp
