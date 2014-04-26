@@ -27,6 +27,8 @@
 #include <fstream>
 #include <sstream>
 
+#include <stdexcept>
+
 #include "tiny_obj_loader.h"
 
 namespace tinyobj {
@@ -458,12 +460,11 @@ std::string LoadMtl (
 }
 
 std::string
-LoadObj(
+MaybeLoadObj(
   std::vector<shape_t>& shapes,
   const char* filename,
   const char* mtl_basepath)
 {
-
   shapes.clear();
 
   std::stringstream err;
@@ -660,5 +661,17 @@ LoadObj(
   return err.str();
 }
 
+void
+LoadObj(
+    std::vector<shape_t>& shapes,
+    const char* filename,
+    const char* mtl_basepath)
+{
+  std::string result = MaybeLoadObj(shapes, filename, mtl_basepath);
+  if (!result.empty()) {
+    throw std::runtime_error(result);
+  }
+}
 
-};
+
+}
