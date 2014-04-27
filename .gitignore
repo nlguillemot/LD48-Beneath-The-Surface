@@ -1,2 +1,6 @@
 # Qt Creator
 CMakeLists.txt.user
+
+# Blender temporaries
+*.blend1
+*.blend2
