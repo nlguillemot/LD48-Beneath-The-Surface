@@ -16,7 +16,8 @@ set(SOURCES
     scene.hpp
     worldscene.hpp worldscene.cpp
     billboard.hpp billboard.cpp
-    geometry.hpp geometry.cpp)
+    geometry.hpp geometry.cpp
+    debugdraw.hpp debugdraw.cpp)
 
 include_directories(
     ${SDL2plus_INCLUDE_DIRS}
@@ -35,7 +36,8 @@ add_definitions(-DGLM_FORCE_RADIANS)
 set(ASSETS
     floor.obj floor.mtl floor.png
     player.png mound.png
-    world.vs world.fs)
+    world.vs world.fs
+    debug.vs debug.fs)
 
 foreach(assetFile ${ASSETS})
     add_custom_target(copy_${assetFile} ALL

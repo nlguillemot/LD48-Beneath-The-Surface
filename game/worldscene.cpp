@@ -10,7 +10,8 @@
 
 WorldScene::WorldScene()
 {
-    mModelProgram.reset(new GLplus::Program(GLplus::Program::FromFiles("world.vs","world.fs")));
+    mpModelProgram.reset(new GLplus::Program(GLplus::Program::FromFiles("world.vs","world.fs")));
+    mpDebugProgram.reset(new GLplus::Program(GLplus::Program::FromFiles("debug.vs","debug.fs")));
 
     std::vector<tinyobj::shape_t> worldShapes;
     tinyobj::LoadObj(worldShapes, "floor.obj");
@@ -82,6 +83,9 @@ WorldScene::WorldScene()
     mPerspective.Aspect = mViewport.Size.x / mViewport.Size.y; // temporary until first render
     mPerspective.Near = 0.1f;
     mPerspective.Far = 1000.0f;
+
+    UpdateWorldView();
+    UpdateProjection();
 }
 
 void print(const char* name, glm::vec3 v)
@@ -103,36 +107,21 @@ bool WorldScene::HandleEvent(const SDL_Event& event)
         if (event.button.button == SDL_BUTTON_LEFT)
         {
             glm::vec3 rayOrigin = mCamera.EyePosition;
-            print("rayOrigin", rayOrigin);
-
-            glm::vec3 cameraView = glm::normalize(mCamera.TargetPosition - mCamera.EyePosition);
-            glm::vec3 cameraSide = glm::cross(cameraView, glm::normalize(mCamera.UpVector));
-            glm::vec3 cameraUpward = glm::cross(cameraSide, cameraView);
-
-            print("cameraView", cameraView);
-            print("cameraSide", cameraSide);
-            print("cameraUpward", cameraUpward);
 
             int windowWidth, windowHeight;
             SDL_GetWindowSize(clickedWindow, &windowWidth, &windowHeight);
-            float windowAspect = (float) windowWidth / windowHeight;
 
-            static const float piOver180 = 0.017453293f;
-            float farPlaneHalfHeight = mPerspective.Far * std::tan(mPerspective.FovY / 2.0f * piOver180);
-            float farPlaneHalfWidth = windowAspect * farPlaneHalfHeight;
+            glm::vec3 rayStart = glm::unProject(
+                        glm::vec3((float) event.button.x, (float) windowHeight - event.button.y, 0.0f),
+                        mWorldViewMatrix, mProjectionMatrix,
+                        glm::vec4(0.0f, 0.0f, (float) windowWidth, (float) windowHeight));
 
-            glm::vec3 farPlaneMiddle = mCamera.EyePosition + cameraView * mPerspective.Far;
+            glm::vec3 rayEnd = glm::unProject(
+                        glm::vec3((float) event.button.x, (float) windowHeight - event.button.y, 1.0f),
+                        mWorldViewMatrix, mProjectionMatrix,
+                        glm::vec4(0.0f, 0.0f, (float) windowWidth, (float) windowHeight));
 
-            glm::vec3 farPlaneIntersect = farPlaneMiddle
-                    + ((float) (event.button.x - windowWidth  / 2) / windowWidth ) * farPlaneHalfWidth  * cameraSide
-                    - ((float) (event.button.y - windowHeight / 2) / windowHeight) * farPlaneHalfHeight * cameraUpward;
-
-            glm::vec3 rayDirection = glm::normalize(farPlaneIntersect - rayOrigin);
-
-            print("farPlaneMiddle", farPlaneMiddle);
-            print("farPlaneIntersect", farPlaneIntersect);
-            print("rayDirection", rayDirection);
-
+            mDebugDraw.AddLine(rayStart, rayStart + 10.0f * (rayEnd - rayStart), glm::vec4(1.0f,0.0f,0.0f,1.0f));
             Mound* closestMound = nullptr;
             float closest_t = INFINITY;
             for (Mound& mound : mMounds)
@@ -142,7 +131,7 @@ bool WorldScene::HandleEvent(const SDL_Event& event)
                 sprite->GetPlane(bottomLeft, across, up);
 
                 float t;
-                if (RayParallelogramIntersect(rayOrigin, rayDirection, bottomLeft, across, up, t))
+                if (RayParallelogramIntersect(rayStart, rayEnd - rayStart, bottomLeft, across, up, t))
                 {
                     if (t < closest_t)
                     {
@@ -152,11 +141,11 @@ bool WorldScene::HandleEvent(const SDL_Event& event)
                 }
             }
 
-            if (closestMound && closestMound->State == MoundState::Uncovered)
+            if (closestMound && closestMound->State == MoundState::Untouched)
             {
                 closestMound->State = MoundState::Uncovered;
                 mBillboards[closestMound->BillboardID]->SetDimensions(glm::vec2(0));
-                printf("Mound uncovered!");
+                printf("Mound %d uncovered!", closestMound->BillboardID);
                 fflush(stdout);
             }
 
@@ -208,6 +197,16 @@ bool WorldScene::HandleEvent(const SDL_Event& event)
             return true;
         }
     }
+    else if (event.type == SDL_MOUSEWHEEL)
+    {
+        if (event.wheel.y != 0)
+        {
+            glm::vec3 toEye = mCamera.EyePosition - mCamera.TargetPosition;
+            toEye *= event.wheel.y > 0 ? 0.9f : 1.11f;
+            mCamera.EyePosition = mCamera.TargetPosition + toEye;
+            return true;
+        }
+    }
 
     return false;
 }
@@ -216,38 +215,60 @@ void WorldScene::Update(unsigned int deltaTimeMS)
 {
 }
 
+void WorldScene::UpdateWorldView()
+{
+    mWorldViewMatrix = glm::lookAt(mCamera.EyePosition, mCamera.TargetPosition, mCamera.UpVector);
+}
+
+void WorldScene::UpdateProjection()
+{
+    mProjectionMatrix = glm::perspective(mPerspective.FovY, mPerspective.Aspect, mPerspective.Near, mPerspective.Far);
+}
+
 void WorldScene::Render(RenderContext& renderContext, float partialUpdatePercentage)
 {
     mViewport = renderContext.CurrentViewport;
     mPerspective.Aspect = (float) mViewport.Size.x / mViewport.Size.y;
 
-    glm::mat4 projection = glm::perspective(mPerspective.FovY, mPerspective.Aspect, mPerspective.Near, mPerspective.Far);
-    glm::mat4 worldview = glm::lookAt(mCamera.EyePosition, mCamera.TargetPosition, mCamera.UpVector);
+    UpdateWorldView();
+    UpdateProjection();
 
-    GLplus::ScopedProgramBinding scopedProgramBinding(*mModelProgram);
-    GLplus::ProgramBinding& programBinding = scopedProgramBinding.GetBinding();
-    programBinding.UploadMatrix4("projection", GL_FALSE, &projection[0][0]);
-    programBinding.UploadMatrix4("modelview", GL_FALSE, &worldview[0][0]);
-
-    glEnable(GL_DEPTH_TEST);
-    GLplus::CheckGLErrors();
-
-    mpWorldMesh->Render(*mModelProgram);
-
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    GLplus::CheckGLErrors();
-
-    for (const std::unique_ptr<Billboard>& pBillboard : mBillboards)
     {
-        if (!pBillboard)
-        {
-            continue;
-        }
+        GLplus::ScopedProgramBinding scopedProgramBinding(*mpModelProgram);
+        GLplus::ProgramBinding& programBinding = scopedProgramBinding.GetBinding();
+        programBinding.UploadMatrix4("projection", GL_FALSE, &mProjectionMatrix[0][0]);
+        programBinding.UploadMatrix4("modelview", GL_FALSE, &mWorldViewMatrix[0][0]);
 
-        pBillboard->SetCameraPosition(mCamera.EyePosition);
-        pBillboard->SetCameraViewDirection(mCamera.TargetPosition - mCamera.EyePosition);
-        pBillboard->SetCameraUp(mCamera.UpVector);
-        pBillboard->Render(*mModelProgram);
+        glEnable(GL_DEPTH_TEST);
+        GLplus::CheckGLErrors();
+
+        mpWorldMesh->Render(*mpModelProgram);
+
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        GLplus::CheckGLErrors();
+
+        for (const std::unique_ptr<Billboard>& pBillboard : mBillboards)
+        {
+            if (!pBillboard)
+            {
+                continue;
+            }
+
+            pBillboard->SetCameraPosition(mCamera.EyePosition);
+            pBillboard->SetCameraViewDirection(mCamera.TargetPosition - mCamera.EyePosition);
+            pBillboard->SetCameraUp(mCamera.UpVector);
+            pBillboard->Render(*mpModelProgram);
+        }
+    }
+
+    {
+        GLplus::ScopedProgramBinding scopedProgramBinding(*mpDebugProgram);
+        GLplus::ProgramBinding& programBinding = scopedProgramBinding.GetBinding();
+        programBinding.UploadMatrix4("projection", GL_FALSE, &mProjectionMatrix[0][0]);
+        programBinding.UploadMatrix4("modelview", GL_FALSE, &mWorldViewMatrix[0][0]);
+
+        mDebugDraw.SetLineWidth(2.0f);
+        mDebugDraw.Render(*mpDebugProgram);
     }
 }

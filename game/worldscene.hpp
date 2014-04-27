@@ -5,6 +5,7 @@
 #include "billboard.hpp"
 
 #include "rendercontext.hpp"
+#include "debugdraw.hpp"
 
 #include <GLmesh.hpp>
 #include <vector>
@@ -45,7 +46,8 @@ struct Mound
 
 class WorldScene : public Scene
 {
-    std::unique_ptr<GLplus::Program> mModelProgram;
+    std::unique_ptr<GLplus::Program> mpModelProgram;
+    std::unique_ptr<GLplus::Program> mpDebugProgram;
 
     std::unique_ptr<GLmesh::StaticMesh> mpWorldMesh;
 
@@ -54,6 +56,8 @@ class WorldScene : public Scene
 
     std::vector<std::unique_ptr<Billboard>> mBillboards;
 
+    DebugDraw mDebugDraw;
+
     Player mPlayer;
     std::vector<Mound> mMounds;
 
@@ -61,9 +65,15 @@ class WorldScene : public Scene
     LookAtCamera mCamera;
     PerspectiveParams mPerspective;
 
+    glm::mat4 mWorldViewMatrix;
+    glm::mat4 mProjectionMatrix;
+
     bool mCameraRotating = false;
 
     void ResetMounds();
+
+    void UpdateWorldView();
+    void UpdateProjection();
 
 public:
     WorldScene();
