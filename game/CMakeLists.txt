@@ -15,7 +15,8 @@ set(SOURCES
     rendercontext.hpp
     scene.hpp
     worldscene.hpp worldscene.cpp
-    billboard.hpp billboard.cpp)
+    billboard.hpp billboard.cpp
+    geometry.hpp geometry.cpp)
 
 include_directories(
     ${SDL2plus_INCLUDE_DIRS}
@@ -33,7 +34,7 @@ add_definitions(-DGLM_FORCE_RADIANS)
 
 set(ASSETS
     floor.obj floor.mtl floor.png
-    player.png
+    player.png mound.png
     world.vs world.fs)
 
 foreach(assetFile ${ASSETS})

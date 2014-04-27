@@ -49,37 +49,28 @@ void Billboard::SetCameraUp(glm::vec3 cameraUp)
     mIsDirty = true;
 }
 
-void Billboard::RebuildBuffers()
+void Billboard::GetPlane(glm::vec3 &bottomLeft, glm::vec3& across, glm::vec3& up)
 {
-    printf("mCenterPosition: { %f, %f, %f }\n", mCenterPosition.x, mCenterPosition.y, mCenterPosition.z);
-    printf("mDimensions: { %f, %f }\n", mDimensions.x, mDimensions.y);
-    printf("mCameraPosition: { %f, %f, %f }\n", mCameraPosition.x, mCameraPosition.y, mCameraPosition.z);
-    printf("mCameraView: { %f, %f, %f }\n", mCameraView.x, mCameraView.y, mCameraView.z);
-    printf("mCameraUp: { %f, %f, %f }\n", mCameraUp.x, mCameraUp.y, mCameraUp.z);
-
     glm::vec3 unitView = glm::normalize(mCameraView);
     glm::vec3 unitSide = glm::cross(unitView, glm::normalize(mCameraUp));
     glm::vec3 unitUp = glm::cross(unitSide, unitView);
 
-    glm::vec3 bottomLeft = mCenterPosition - unitSide / 2.0f * mDimensions.x - unitUp / 2.0f * mDimensions.y;
+    bottomLeft = mCenterPosition - unitSide / 2.0f * mDimensions.x - unitUp / 2.0f * mDimensions.y;
+    across = unitSide * mDimensions.x;
+    up = unitUp * mDimensions.y;
+}
 
-    printf("unitView: { %f, %f, %f }\n", unitView.x, unitView.y, unitView.z);
-    printf("unitSide: { %f, %f, %f }\n", unitSide.x, unitSide.y, unitSide.z);
-    printf("unitUp: { %f, %f, %f }\n", unitUp.x, unitUp.y, unitUp.z);
-    printf("bottomLeft: { %f, %f, %f }\n", bottomLeft.x, bottomLeft.y, bottomLeft.z);
+void Billboard::RebuildBuffers()
+{
+    glm::vec3 bottomLeft, across, up;
+    GetPlane(bottomLeft, across, up);
 
     glm::vec3 positions[4] = {
         bottomLeft,
-        bottomLeft + unitSide * mDimensions.x,
-        bottomLeft + unitSide * mDimensions.x + unitUp * mDimensions.y,
-        bottomLeft + unitUp * mDimensions.y
+        bottomLeft + across,
+        bottomLeft + across + up,
+        bottomLeft + up
     };
-
-    printf("positions:\n");
-    for (glm::vec3 v : positions) {
-        printf("{ %f, %f, %f }\n", v.x, v.y, v.z);
-    }
-    fflush(stdout);
 
     {
         GLplus::ScopedBufferBinding scopedBind(*mpPositions, GL_ARRAY_BUFFER);

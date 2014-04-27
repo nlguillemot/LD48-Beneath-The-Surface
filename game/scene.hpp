@@ -2,11 +2,14 @@
 #define SCENE_HPP
 
 class RenderContext;
+union SDL_Event;
 
 class Scene
 {
 public:
     virtual ~Scene(){}
+
+    virtual bool HandleEvent(const SDL_Event& event) = 0;
 
     virtual void Update(unsigned int deltaTimeMS) = 0;
 

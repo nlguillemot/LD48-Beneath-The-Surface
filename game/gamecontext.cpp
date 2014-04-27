@@ -46,6 +46,10 @@ void GameContext::MainLoop()
             {
                 goto MainLoopEnd;
             }
+            else
+            {
+                HandleEvent(event);
+            }
         }
 
         while (timeLag >= mMillisecondsPerUpdate)
@@ -61,9 +65,20 @@ void GameContext::MainLoop()
     MainLoopEnd:;
 }
 
+bool GameContext::HandleEvent(const SDL_Event& event)
+{
+    if (mpCurrentScene)
+    {
+        mpCurrentScene->HandleEvent(event);
+    }
+}
+
 void GameContext::Update(unsigned int deltaTimeMS)
 {
-    mpCurrentScene->Update(deltaTimeMS);
+    if (mpCurrentScene)
+    {
+        mpCurrentScene->Update(deltaTimeMS);
+    }
 }
 
 void GameContext::Render(RenderContext& renderContext, float partialUpdatePercentage)
@@ -72,6 +87,10 @@ void GameContext::Render(RenderContext& renderContext, float partialUpdatePercen
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     GLplus::CheckGLErrors();
 
-    mpCurrentScene->Render(renderContext, partialUpdatePercentage);
+    if (mpCurrentScene)
+    {
+        mpCurrentScene->Render(renderContext, partialUpdatePercentage);
+    }
+
     mpWindow->SwapBuffers();
 }

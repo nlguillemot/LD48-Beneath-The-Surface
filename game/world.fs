@@ -8,5 +8,8 @@ out vec4 oColor;
 
 void main()
 {
-    oColor = texture(diffuseTexture, ftexcoord0);
+    vec4 texel = texture(diffuseTexture, ftexcoord0);
+    if (texel.a < 0.05)
+        discard;
+    oColor = texel;
 }

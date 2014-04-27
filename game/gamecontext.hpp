@@ -24,6 +24,8 @@ public:
     void MainLoop();
 
 private:
+    bool HandleEvent(const SDL_Event& event);
+
     void Update(unsigned int deltaTimeMS);
 
     void Render(RenderContext& renderContext, float partialUpdatePercentage);
