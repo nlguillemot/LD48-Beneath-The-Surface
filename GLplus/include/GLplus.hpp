@@ -23,7 +23,6 @@ namespace detail
         ObjectHandle(ObjectHandle&& other){ std::swap(mHandle, other.mHandle); }
         ObjectHandle& operator=(ObjectHandle&& other){ std::swap(mHandle, other.mHandle); }
     };
-
 }
 
 class Shader
@@ -41,9 +40,9 @@ public:
 
     void Compile(const GLchar* source);
 
-    GLenum GetShaderType() const;
+    GLenum GetShaderType() const { return mShaderType; }
 
-    GLuint GetGLHandle() const;
+    GLuint GetGLHandle() const { return mHandle.mHandle; }
 };
 
 class Program
@@ -71,7 +70,7 @@ public:
     bool TryGetUniformLocation(const GLchar* name, GLint& loc) const;
     GLint GetUniformLocation(const GLchar* name) const;
 
-    GLuint GetGLHandle() const;
+    GLuint GetGLHandle() const { return mHandle.mHandle; }
 };
 
 class ProgramBinding
@@ -125,7 +124,6 @@ public:
 class Buffer
 {
     detail::ObjectHandle mHandle;
-    GLenum mTarget;
 
 public:
     Buffer();
@@ -136,7 +134,7 @@ public:
     Buffer(Buffer&&) = default;
     Buffer& operator=(Buffer&&) = default;
 
-    GLuint GetGLHandle() const;
+    GLuint GetGLHandle() const { return mHandle.mHandle; }
 };
 
 class BufferBinding
@@ -193,7 +191,7 @@ public:
     VertexArray& operator=(VertexArray&&) = default;
 
     GLenum GetIndexType() const;
-    GLuint GetGLHandle() const;
+    GLuint GetGLHandle() const { return mHandle.mHandle; }
 };
 
 class VertexArrayBinding
@@ -259,7 +257,7 @@ public:
     Texture2D(Texture2D&&) = default;
     Texture2D& operator=(Texture2D&&) = default;
 
-    GLuint GetGLHandle() const;
+    GLuint GetGLHandle() const { return mHandle.mHandle; }
 };
 
 class ActiveTextureBinding
@@ -338,7 +336,7 @@ public:
     RenderBuffer(RenderBuffer&&) = default;
     RenderBuffer& operator=(RenderBuffer&&) = default;
 
-    GLuint GetGLHandle() const;
+    GLuint GetGLHandle() const { return mHandle.mHandle; }
 };
 
 class RenderBufferBinding
@@ -400,7 +398,7 @@ public:
     FrameBuffer(FrameBuffer&&) = default;
     FrameBuffer& operator=(FrameBuffer&&) = default;
 
-    GLuint GetGLHandle() const;
+    GLuint GetGLHandle() const { return mHandle.mHandle; }
 };
 
 class FrameBufferBinding
@@ -441,6 +439,54 @@ public:
 
           FrameBufferBinding& GetBinding()       { return mBinding; }
     const FrameBufferBinding& GetBinding() const { return mBinding; }
+};
+
+class Sampler
+{
+    detail::ObjectHandle mHandle;
+
+public:
+    Sampler();
+    ~Sampler();
+
+    Sampler(const Sampler&) = delete;
+    Sampler& operator=(const Sampler&) = delete;
+    Sampler(Sampler&&) = default;
+    Sampler& operator=(Sampler&&) = default;
+
+    void SetParameter(GLenum pname, int param);
+
+    GLuint GetGLHandle() const { return mHandle.mHandle; }
+};
+
+class SamplerBinding
+{
+    Sampler& mSampler;
+
+public:
+    SamplerBinding(Sampler& sampler, GLuint textureUnit);
+
+          Sampler& GetSampler()       { return mSampler; }
+    const Sampler& GetSampler() const { return mSampler; }
+};
+
+class ScopedSamplerBinding
+{
+    struct OldBinding
+    {
+        OldBinding(GLuint textureUnit);
+        GLuint mOldTextureUnit;
+        detail::ObjectHandle mOldHandle;
+    } mOldBinding;
+
+    SamplerBinding mBinding;
+
+public:
+    ScopedSamplerBinding(Sampler& sampler, GLuint textureUnit);
+    ~ScopedSamplerBinding();
+
+          SamplerBinding& GetBinding()       { return mBinding; }
+    const SamplerBinding& GetBinding() const { return mBinding; }
 };
 
 constexpr size_t SizeFromGLType(GLenum type)

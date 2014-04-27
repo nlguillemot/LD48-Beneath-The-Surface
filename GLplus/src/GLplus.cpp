@@ -96,16 +96,6 @@ void Shader::Compile(const GLchar* source)
     }
 }
 
-GLenum Shader::GetShaderType() const
-{
-    return mShaderType;
-}
-
-GLuint Shader::GetGLHandle() const
-{
-    return mHandle.mHandle;
-}
-
 Program::Program()
 {
     mHandle.mHandle = glCreateProgram();
@@ -230,11 +220,6 @@ GLint Program::GetUniformLocation(const GLchar* name) const
     return loc;
 }
 
-GLuint Program::GetGLHandle() const
-{
-    return mHandle.mHandle;
-}
-
 ProgramBinding::ProgramBinding(Program& program)
     : mProgram(program)
 {
@@ -351,11 +336,6 @@ Buffer::~Buffer()
     CheckGLErrors();
 }
 
-GLuint Buffer::GetGLHandle() const
-{
-    return mHandle.mHandle;
-}
-
 BufferBinding::BufferBinding(Buffer& buffer, GLenum target)
     : mBuffer(buffer)
     , mTarget(target)
@@ -419,11 +399,6 @@ GLenum VertexArray::GetIndexType() const
         throw std::runtime_error("VertexArray has no index type.");
     }
     return mIndexType;
-}
-
-GLuint VertexArray::GetGLHandle() const
-{
-    return mHandle.mHandle;
 }
 
 VertexArrayBinding::VertexArrayBinding(VertexArray& vertexArray)
@@ -494,11 +469,6 @@ Texture2D::~Texture2D()
 {
     glDeleteTextures(1, &mHandle.mHandle);
     CheckGLErrors();
-}
-
-GLuint Texture2D::GetGLHandle() const
-{
-    return mHandle.mHandle;
 }
 
 ActiveTextureBinding::ActiveTextureBinding(GLenum textureIndex)
@@ -607,11 +577,6 @@ RenderBuffer::~RenderBuffer()
     CheckGLErrors();
 }
 
-GLuint RenderBuffer::GetGLHandle() const
-{
-    return mHandle.mHandle;
-}
-
 RenderBufferBinding::RenderBufferBinding(RenderBuffer& renderBuffer)
     : mRenderBuffer(renderBuffer)
 {
@@ -668,11 +633,6 @@ FrameBuffer::~FrameBuffer()
 {
     glDeleteFramebuffers(1, &mHandle.mHandle);
     CheckGLErrors();
-}
-
-GLuint FrameBuffer::GetGLHandle() const
-{
-    return mHandle.mHandle;
 }
 
 FrameBufferBinding::FrameBufferBinding(FrameBuffer& frameBuffer, GLuint target)
@@ -778,6 +738,63 @@ ScopedFrameBufferBinding::~ScopedFrameBufferBinding()
     {
         throw std::logic_error("Invalid FrameBuffer target type");
     }
+}
+
+Sampler::Sampler()
+{
+    glGenSamplers(1, &mHandle.mHandle);
+    CheckGLErrors();
+}
+
+Sampler::~Sampler()
+{
+    glDeleteSamplers(1, &mHandle.mHandle);
+    CheckGLErrors();
+}
+
+void Sampler::SetParameter(GLenum pname, int param)
+{
+    glSamplerParameteri(mHandle.mHandle, pname, param);
+    CheckGLErrors();
+}
+
+SamplerBinding::SamplerBinding(Sampler& sampler, GLuint textureUnit)
+    : mSampler(sampler)
+{
+    glBindSampler(textureUnit, sampler.GetGLHandle());
+    CheckGLErrors();
+}
+
+ScopedSamplerBinding::OldBinding::OldBinding(GLuint textureUnit)
+{
+    GLint oldActiveTexture;
+    glGetIntegerv(GL_ACTIVE_TEXTURE, &oldActiveTexture);
+    CheckGLErrors();
+
+    mOldTextureUnit = textureUnit;
+
+    glActiveTexture(GL_TEXTURE0 + textureUnit);
+    CheckGLErrors();
+
+    GLint oldSampler;
+    glGetIntegerv(GL_SAMPLER_BINDING, &oldSampler);
+    CheckGLErrors();
+
+    mOldHandle.mHandle = oldSampler;
+
+    glActiveTexture(oldActiveTexture);
+    CheckGLErrors();
+}
+
+ScopedSamplerBinding::ScopedSamplerBinding(Sampler& sampler, GLuint textureUnit)
+    : mOldBinding(textureUnit)
+    , mBinding(sampler, textureUnit)
+{ }
+
+ScopedSamplerBinding::~ScopedSamplerBinding()
+{
+    glBindSampler(mOldBinding.mOldTextureUnit, mOldBinding.mOldHandle.mHandle);
+    CheckGLErrors();
 }
 
 void DrawArrays(GLenum mode, GLint first, GLsizei count)
