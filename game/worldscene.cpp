@@ -11,6 +11,7 @@
 #include <random>
 #include <algorithm>
 #include <stdexcept>
+#include <set>
 
 WorldScene::WorldScene()
 {
@@ -121,7 +122,7 @@ void WorldScene::ResetMounds()
     }
 
     // allocate mines
-    int numMines = 20;
+    int numMines = 10;
 
     std::random_device randomDevice;
     std::default_random_engine randomEngine(randomDevice());
@@ -150,21 +151,39 @@ void WorldScene::ClickMound(size_t moundIndex)
     }
     else
     {
-        std::vector<size_t> toUnCover = ZeroClosure(moundIndex);
-        toUnCover.push_back(moundIndex);
-        for (size_t index : toUnCover)
+        std::set<size_t> zeroClosure = ZeroClosure(moundIndex);
+
+        // Now the neighbours too
+        std::set<size_t> toReveal{moundIndex};
+        for (size_t zero : zeroClosure)
+        {
+            toReveal.insert(zero);
+            for (size_t neighbor : SurroundingMounds(zero))
+            {
+                toReveal.insert(neighbor);
+            }
+        }
+
+        for (size_t index : toReveal)
         {
             printf("Uncovered %zu\n", index);
             mMounds[index].State = MoundState::Uncovered;
-            mBillboards[mMounds[index].BillboardID]->SetTexture(mMoundNumberTextures[0]);
+
+            int numNeighborMines = 0;
+            for (size_t neighbor : SurroundingMounds(index))
+            {
+                if (mMounds[neighbor].IsMine) numNeighborMines++;
+            }
+
+            mBillboards[mMounds[index].BillboardID]->SetTexture(mMoundNumberTextures[numNeighborMines]);
         }
         fflush(stdout);
     }
 }
 
-std::vector<size_t> WorldScene::ZeroClosure(size_t moundIndex)
+std::set<size_t> WorldScene::ZeroClosure(size_t moundIndex)
 {
-    std::vector<size_t> closure;
+    std::set<size_t> closure;
 
     std::vector<size_t> toCheck{moundIndex};
     while (!toCheck.empty())
@@ -179,7 +198,7 @@ std::vector<size_t> WorldScene::ZeroClosure(size_t moundIndex)
         }
         else
         {
-            std::vector<size_t> surroundings = SurroundingMounds(toCheck.back());
+            std::set<size_t> surroundings = SurroundingMounds(toCheck.back());
             int numSurroundingMines = 0;
             for (size_t surrounding : surroundings)
             {
@@ -191,7 +210,7 @@ std::vector<size_t> WorldScene::ZeroClosure(size_t moundIndex)
 
             if (numSurroundingMines == 0)
             {
-                closure.push_back(toCheck.back());
+                closure.insert(toCheck.back());
                 toCheck.pop_back();
                 toCheck.insert(toCheck.end(), surroundings.begin(), surroundings.end());
             }
@@ -205,11 +224,11 @@ std::vector<size_t> WorldScene::ZeroClosure(size_t moundIndex)
     return closure;
 }
 
-std::vector<size_t> WorldScene::SurroundingMounds(size_t moundIndex)
+std::set<size_t> WorldScene::SurroundingMounds(size_t moundIndex)
 {
     if (moundIndex >= mMounds.size()) throw std::out_of_range("moundIndex");
 
-    std::vector<size_t> surroundingMounds;
+    std::set<size_t> surroundingMounds;
 
     int cy = moundIndex / mMoundsPerRow;
     int cx = moundIndex - cy * mMoundsPerRow;
@@ -224,7 +243,7 @@ std::vector<size_t> WorldScene::SurroundingMounds(size_t moundIndex)
                 int x = cx + dx;
                 if (x >= 0 && x < mMoundsPerRow && y >= 0 && y < mMoundsPerRow)
                 {
-                    surroundingMounds.push_back(y * mMoundsPerRow + x);
+                    surroundingMounds.insert(y * mMoundsPerRow + x);
                 }
             }
         }

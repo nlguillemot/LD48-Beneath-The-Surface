@@ -9,6 +9,7 @@
 
 #include <GLmesh.hpp>
 #include <vector>
+#include <set>
 
 struct LookAtCamera
 {
@@ -79,8 +80,8 @@ class WorldScene : public Scene
     void ResetMounds();
 
     void ClickMound(size_t moundIndex);
-    std::vector<size_t> ZeroClosure(size_t moundIndex);
-    std::vector<size_t> SurroundingMounds(size_t moundIndex);
+    std::set<size_t> ZeroClosure(size_t moundIndex);
+    std::set<size_t> SurroundingMounds(size_t moundIndex);
 
     void UpdateWorldView();
     void UpdateProjection();
