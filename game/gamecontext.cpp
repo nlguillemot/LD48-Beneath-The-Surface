@@ -1,17 +1,28 @@
 #include "gamecontext.hpp"
 
+#include "worldscene.hpp"
+
 GameContext::GameContext(int argc, char* argv[])
 {
-    mSDL.reset(new SDL2plus::LibSDL(SDL_INIT_VIDEO));
-    mSDL->SetGLAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    mSDL->SetGLAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-    mSDL->SetGLAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    mpSDL.reset(new SDL2plus::LibSDL(SDL_INIT_VIDEO));
+    mpSDL->SetGLAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    mpSDL->SetGLAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+    mpSDL->SetGLAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
-    mWindow.reset(new SDL2plus::WindowGL(
+    mpWindow.reset(new SDL2plus::WindowGL(
                       "Beneath the Surface",
                       SDL_WINDOWPOS_UNDEFINED,
                       SDL_WINDOWPOS_UNDEFINED,
                       640, 480, SDL_WINDOW_OPENGL));
+
+    mpWindowFrameBuffer.reset(new GLplus::FrameBuffer(GLplus::DefaultFrameBuffer()));
+
+    Viewport viewport(glm::ivec2(0), glm::ivec2(mpWindow->GetWidth(), mpWindow->GetHeight()));
+    mpRenderContext.reset(new RenderContext());
+    mpRenderContext->CurrentFrameBuffer = mpWindowFrameBuffer;
+    mpRenderContext->CurrentViewport = viewport;
+
+    mpCurrentScene.reset(new WorldScene());
 
     mMillisecondsPerUpdate = 1000/60;
 }
@@ -44,18 +55,23 @@ void GameContext::MainLoop()
         }
 
         float partialUpdatePercentage = (float) timeLag / mMillisecondsPerUpdate;
-        Render(partialUpdatePercentage);
+        Render(*mpRenderContext, partialUpdatePercentage);
     }
 
     MainLoopEnd:;
 }
 
-void GameContext::Update(Uint32 deltaTimeMS)
+void GameContext::Update(unsigned int deltaTimeMS)
 {
-
+    mpCurrentScene->Update(deltaTimeMS);
 }
 
-void GameContext::Render(float partialUpdatePercentage)
+void GameContext::Render(RenderContext& renderContext, float partialUpdatePercentage)
 {
-    mWindow->SwapBuffers();
+    glClearColor(1.0f,1.0f,1.0f,1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    GLplus::CheckGLErrors();
+
+    mpCurrentScene->Render(renderContext, partialUpdatePercentage);
+    mpWindow->SwapBuffers();
 }

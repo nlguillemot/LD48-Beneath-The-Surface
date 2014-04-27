@@ -12,8 +12,10 @@ endif()
 set(SOURCES
     main.cpp
     gamecontext.hpp gamecontext.cpp
+    rendercontext.hpp
     scene.hpp
-    worldscene.hpp worldscene.cpp)
+    worldscene.hpp worldscene.cpp
+    billboard.hpp billboard.cpp)
 
 include_directories(
     ${SDL2plus_INCLUDE_DIRS}
@@ -30,11 +32,14 @@ target_link_libraries(game
 add_definitions(-DGLM_FORCE_RADIANS)
 
 set(ASSETS
-    floor.obj floor.mtl)
+    floor.obj floor.mtl floor.png
+    player.png
+    world.vs world.fs)
 
 foreach(assetFile ${ASSETS})
-    add_custom_command(TARGET game POST_BUILD
+    add_custom_target(copy_${assetFile} ALL
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${PROJECT_SOURCE_DIR}/${assetFile}"
-        $<TARGET_FILE_DIR:game>)
+            ${CMAKE_CURRENT_SOURCE_DIR}/${assetFile}
+            ${CMAKE_CURRENT_BINARY_DIR}/${assetFile}
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${assetFile})
 endforeach()
