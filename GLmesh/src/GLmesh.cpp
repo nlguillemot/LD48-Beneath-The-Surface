@@ -62,11 +62,11 @@ void StaticMesh::LoadShape(const tinyobj::shape_t& shape)
 
     mVertexCount = shape.mesh.indices.size();
 
-    mIndices = std::move(newIndices);
-    mPositions = std::move(newPositions);
-    mTexcoords = std::move(newTexcoords);
-    mNormals = std::move(newNormals);
-    mDiffuseTexture = std::move(newDiffuseTexture);
+    mpIndices = std::move(newIndices);
+    mpPositions = std::move(newPositions);
+    mpTexcoords = std::move(newTexcoords);
+    mpNormals = std::move(newNormals);
+    mpDiffuseTexture = std::move(newDiffuseTexture);
 }
 
 void StaticMesh::Render(GLplus::Program& program) const
@@ -75,37 +75,37 @@ void StaticMesh::Render(GLplus::Program& program) const
     GLplus::ScopedVertexArrayBinding scopedVAO(vertexArray);
     GLplus::VertexArrayBinding& vaoBinding = scopedVAO.GetBinding();
 
-    vaoBinding.SetIndexBuffer(mIndices, GL_UNSIGNED_INT);
+    vaoBinding.SetIndexBuffer(mpIndices, GL_UNSIGNED_INT);
 
-    if (mPositions)
+    if (mpPositions)
     {
         GLint positionLoc;
         if (program.TryGetAttributeLocation("position", positionLoc))
         {
             vaoBinding.SetAttribute(
-                        positionLoc, mPositions,
+                        positionLoc, mpPositions,
                         3, GL_FLOAT, GL_FALSE, 0, 0);
         }
     }
 
-    if (mNormals)
+    if (mpNormals)
     {
         GLint normalLoc;
         if (program.TryGetAttributeLocation("normal", normalLoc))
         {
             vaoBinding.SetAttribute(
-                        normalLoc, mNormals,
+                        normalLoc, mpNormals,
                         3, GL_FLOAT, GL_FALSE, 0, 0);
         }
     }
 
-    if (mTexcoords)
+    if (mpTexcoords)
     {
         GLint texcoord0Loc;
         if (program.TryGetAttributeLocation("texcoord0", texcoord0Loc))
         {
             vaoBinding.SetAttribute(
-                        texcoord0Loc, mTexcoords,
+                        texcoord0Loc, mpTexcoords,
                         2, GL_FLOAT, GL_FALSE, 0, 0);
         }
     }
@@ -113,10 +113,10 @@ void StaticMesh::Render(GLplus::Program& program) const
     GLplus::ScopedProgramBinding programBinding(program);
     std::unique_ptr<GLplus::ScopedActiveTextureBinding> activeTextureBind;
     std::unique_ptr<GLplus::ScopedTexture2DBinding> diffuseBind;
-    if (mDiffuseTexture)
+    if (mpDiffuseTexture)
     {
         activeTextureBind.reset(new GLplus::ScopedActiveTextureBinding(GL_TEXTURE0));
-        diffuseBind.reset(new GLplus::ScopedTexture2DBinding(*mDiffuseTexture));
+        diffuseBind.reset(new GLplus::ScopedTexture2DBinding(*mpDiffuseTexture));
         programBinding.GetBinding().UploadInt("diffuseTexture", 0);
     }
 

@@ -13,14 +13,14 @@ namespace GLmesh
 
 class StaticMesh
 {
-    std::shared_ptr<GLplus::Buffer> mPositions;
-    std::shared_ptr<GLplus::Buffer> mTexcoords;
-    std::shared_ptr<GLplus::Buffer> mNormals;
-    std::shared_ptr<GLplus::Buffer> mIndices;
+    std::shared_ptr<GLplus::Buffer> mpPositions;
+    std::shared_ptr<GLplus::Buffer> mpTexcoords;
+    std::shared_ptr<GLplus::Buffer> mpNormals;
+    std::shared_ptr<GLplus::Buffer> mpIndices;
 
     size_t mVertexCount = 0;
 
-    std::shared_ptr<GLplus::Texture2D> mDiffuseTexture;
+    std::shared_ptr<GLplus::Texture2D> mpDiffuseTexture;
 
 public:
     void LoadShape(const tinyobj::shape_t& shape);
