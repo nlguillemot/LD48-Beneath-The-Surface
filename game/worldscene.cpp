@@ -8,6 +8,10 @@
 #include <tiny_obj_loader.h>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <random>
+#include <algorithm>
+#include <stdexcept>
+
 WorldScene::WorldScene()
 {
     mpModelProgram.reset(new GLplus::Program(GLplus::Program::FromFiles("world.vs","world.fs")));
@@ -43,6 +47,16 @@ WorldScene::WorldScene()
         moundAspect = (float) textureBind.GetWidth() / textureBind.GetHeight();
     }
 
+    for (int number = 0; number < 9; number++)
+    {
+        mMoundNumberTextures.emplace_back(new GLplus::Texture2D());
+        GLplus::ScopedTexture2DBinding scopedTextureBind(*mMoundNumberTextures.back());
+        GLplus::Texture2DBinding& textureBind = scopedTextureBind.GetBinding();
+
+        std::string filename = "mound" + std::to_string(number) + ".png";
+        textureBind.LoadImage(filename.c_str(), GLplus::Texture2D::InvertY);
+    }
+
     // Add player
     mBillboards.emplace_back(new Billboard());
     mPlayer.BillboardID = mBillboards.size() - 1;
@@ -52,10 +66,10 @@ WorldScene::WorldScene()
     playerSprite->SetCenterPosition(glm::vec3(0.0f, playerSprite->GetDimensions().y / 2.0f, 0.0f));
 
     // Add mounds
-    int moundsPerRank = 10;
-    for (int i = 0; i < moundsPerRank; i++)
+    mMoundsPerRow = 10;
+    for (int i = 0; i < mMoundsPerRow; i++)
     {
-        for (int j = 0; j < moundsPerRank; j++)
+        for (int j = 0; j < mMoundsPerRow; j++)
         {
             mBillboards.emplace_back(new Billboard());
             std::unique_ptr<Billboard>& moundSprite = mBillboards.back();
@@ -63,7 +77,7 @@ WorldScene::WorldScene()
             moundSprite->SetDimensions(glm::vec2(moundAspect, 1.0f) * 0.7f);
             glm::vec3 uncenteredPosition = glm::vec3(i * 1.0f, moundSprite->GetDimensions().y / 2.0f, j * 1.0f);
             moundSprite->SetCenterPosition(uncenteredPosition
-                                           - glm::vec3(moundsPerRank / 2.0f, 0.0f, moundsPerRank / 2.0f)
+                                           - glm::vec3(mMoundsPerRow / 2.0f, 0.0f, mMoundsPerRow / 2.0f)
                                            + glm::vec3(0.5f, 0.0f, 0.5f));
             mMounds.emplace_back();
             Mound& mound = mMounds.back();
@@ -72,10 +86,12 @@ WorldScene::WorldScene()
         }
     }
 
+    ResetMounds();
+
     mViewport.TopLeft = glm::ivec2(0);
     mViewport.Size = glm::ivec2(1,1); // temporary until first render
 
-    mCamera.EyePosition = glm::vec3(7.0f);
+    mCamera.EyePosition = glm::vec3(7.0f, 10.0f, 7.0f);
     mCamera.TargetPosition = mBillboards[mPlayer.BillboardID]->GetCenterPosition();
     mCamera.UpVector = glm::vec3(0.0f,1.0f,0.0f);
 
@@ -94,6 +110,129 @@ void print(const char* name, glm::vec3 v)
     fflush(stdout);
 }
 
+void WorldScene::ResetMounds()
+{
+    // reset state of mounds
+    for (Mound& mound : mMounds)
+    {
+        mound.State = MoundState::Untouched;
+        mound.IsMine = false;
+        mBillboards[mound.BillboardID]->SetTexture(mpMoundTexture);
+    }
+
+    // allocate mines
+    int numMines = 20;
+
+    std::random_device randomDevice;
+    std::default_random_engine randomEngine(randomDevice());
+    std::uniform_int_distribution<int> uniformDist(0, mMounds.size() - 1);
+
+    for (int minesLeft = numMines; minesLeft > 0 && numMines - minesLeft < mMounds.size(); minesLeft--)
+    {
+        int chosen;
+retry:
+        chosen = uniformDist(randomEngine);
+        if (mMounds[chosen].IsMine)
+        {
+            goto retry;
+        }
+
+        mMounds[chosen].IsMine = true;
+    }
+}
+
+void WorldScene::ClickMound(size_t moundIndex)
+{
+    if (mMounds.at(moundIndex).IsMine)
+    {
+        printf("You died!\n"); fflush(stdout);
+        ResetMounds();
+    }
+    else
+    {
+        std::vector<size_t> toUnCover = ZeroClosure(moundIndex);
+        toUnCover.push_back(moundIndex);
+        for (size_t index : toUnCover)
+        {
+            printf("Uncovered %zu\n", index);
+            mMounds[index].State = MoundState::Uncovered;
+            mBillboards[mMounds[index].BillboardID]->SetTexture(mMoundNumberTextures[0]);
+        }
+        fflush(stdout);
+    }
+}
+
+std::vector<size_t> WorldScene::ZeroClosure(size_t moundIndex)
+{
+    std::vector<size_t> closure;
+
+    std::vector<size_t> toCheck{moundIndex};
+    while (!toCheck.empty())
+    {
+        if (std::find(closure.begin(), closure.end(), toCheck.back()) != closure.end())
+        {
+            toCheck.pop_back();
+        }
+        else if (mMounds[toCheck.back()].IsMine)
+        {
+            toCheck.pop_back();
+        }
+        else
+        {
+            std::vector<size_t> surroundings = SurroundingMounds(toCheck.back());
+            int numSurroundingMines = 0;
+            for (size_t surrounding : surroundings)
+            {
+                if (mMounds[surrounding].IsMine)
+                {
+                    numSurroundingMines++;
+                }
+            }
+
+            if (numSurroundingMines == 0)
+            {
+                closure.push_back(toCheck.back());
+                toCheck.pop_back();
+                toCheck.insert(toCheck.end(), surroundings.begin(), surroundings.end());
+            }
+            else
+            {
+                toCheck.pop_back();
+            }
+        }
+    }
+
+    return closure;
+}
+
+std::vector<size_t> WorldScene::SurroundingMounds(size_t moundIndex)
+{
+    if (moundIndex >= mMounds.size()) throw std::out_of_range("moundIndex");
+
+    std::vector<size_t> surroundingMounds;
+
+    int cy = moundIndex / mMoundsPerRow;
+    int cx = moundIndex - cy * mMoundsPerRow;
+
+    for (int dy = -1; dy <= 1; dy++)
+    {
+        int y = cy + dy;
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            if (!(dx == 0 && dy == 0))
+            {
+                int x = cx + dx;
+                if (x >= 0 && x < mMoundsPerRow && y >= 0 && y < mMoundsPerRow)
+                {
+                    surroundingMounds.push_back(y * mMoundsPerRow + x);
+                }
+            }
+        }
+    }
+
+    return surroundingMounds;
+}
+
 bool WorldScene::HandleEvent(const SDL_Event& event)
 {
     if (event.type == SDL_MOUSEBUTTONDOWN)
@@ -106,8 +245,6 @@ bool WorldScene::HandleEvent(const SDL_Event& event)
 
         if (event.button.button == SDL_BUTTON_LEFT)
         {
-            glm::vec3 rayOrigin = mCamera.EyePosition;
-
             int windowWidth, windowHeight;
             SDL_GetWindowSize(clickedWindow, &windowWidth, &windowHeight);
 
@@ -121,7 +258,6 @@ bool WorldScene::HandleEvent(const SDL_Event& event)
                         mWorldViewMatrix, mProjectionMatrix,
                         glm::vec4(0.0f, 0.0f, (float) windowWidth, (float) windowHeight));
 
-            mDebugDraw.AddLine(rayStart, rayStart + 10.0f * (rayEnd - rayStart), glm::vec4(1.0f,0.0f,0.0f,1.0f));
             Mound* closestMound = nullptr;
             float closest_t = INFINITY;
             for (Mound& mound : mMounds)
@@ -143,17 +279,13 @@ bool WorldScene::HandleEvent(const SDL_Event& event)
 
             if (closestMound && closestMound->State == MoundState::Untouched)
             {
-                closestMound->State = MoundState::Uncovered;
-                mBillboards[closestMound->BillboardID]->SetDimensions(glm::vec2(0));
-                printf("Mound %d uncovered!", closestMound->BillboardID);
-                fflush(stdout);
+                ClickMound(closestMound - mMounds.data());
             }
 
             return true;
         }
         else if (event.button.button == SDL_BUTTON_RIGHT)
         {
-            printf("Camera rotating"); fflush(stdout);
             mCameraRotating = true;
             return true;
         }
@@ -162,7 +294,6 @@ bool WorldScene::HandleEvent(const SDL_Event& event)
     {
         if (event.button.button == SDL_BUTTON_RIGHT)
         {
-            printf("Camera not rotating"); fflush(stdout);
             mCameraRotating = false;
             return true;
         }

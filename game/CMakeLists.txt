@@ -35,7 +35,10 @@ add_definitions(-DGLM_FORCE_RADIANS)
 
 set(ASSETS
     floor.obj floor.mtl floor.png
-    player.png mound.png
+    player.png
+     mound.png mound0.png mound1.png mound2.png mound3.png
+    mound4.png mound5.png mound6.png mound7.png mound8.png
+    mine.png
     world.vs world.fs
     debug.vs debug.fs)
 

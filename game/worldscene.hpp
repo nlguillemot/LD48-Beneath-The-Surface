@@ -42,6 +42,8 @@ struct Mound
     size_t BillboardID;
 
     MoundState State;
+
+    bool IsMine;
 };
 
 class WorldScene : public Scene
@@ -52,13 +54,17 @@ class WorldScene : public Scene
     std::unique_ptr<GLmesh::StaticMesh> mpWorldMesh;
 
     std::shared_ptr<GLplus::Texture2D> mpPlayerTexture;
+
     std::shared_ptr<GLplus::Texture2D> mpMoundTexture;
+    std::vector<std::shared_ptr<GLplus::Texture2D>> mMoundNumberTextures;
 
     std::vector<std::unique_ptr<Billboard>> mBillboards;
 
     DebugDraw mDebugDraw;
 
     Player mPlayer;
+
+    int mMoundsPerRow;
     std::vector<Mound> mMounds;
 
     Viewport mViewport;
@@ -71,6 +77,10 @@ class WorldScene : public Scene
     bool mCameraRotating = false;
 
     void ResetMounds();
+
+    void ClickMound(size_t moundIndex);
+    std::vector<size_t> ZeroClosure(size_t moundIndex);
+    std::vector<size_t> SurroundingMounds(size_t moundIndex);
 
     void UpdateWorldView();
     void UpdateProjection();
