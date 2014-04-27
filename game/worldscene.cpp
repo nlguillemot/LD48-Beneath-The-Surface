@@ -53,8 +53,13 @@ void WorldScene::Render(RenderContext& renderContext, float partialUpdatePercent
     programBinding.UploadMatrix4("modelview", GL_FALSE, &worldview[0][0]);
 
     glEnable(GL_DEPTH_TEST);
+    GLplus::CheckGLErrors();
 
     mpWorldMesh->Render(*mModelProgram);
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    GLplus::CheckGLErrors();
 
     for (const std::unique_ptr<Billboard>& pBillboard : mBillboards)
     {
